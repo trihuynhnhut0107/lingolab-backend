@@ -1,0 +1,21 @@
+{
+  "entryFile": "src/server.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/controllers/**/*Controller.ts"],
+  "spec": {
+    "outputDirectory": "src",
+    "specVersion": 3,
+    "name": "LingoLab API",
+    "description": "LingoLab Backend API Documentation",
+    "version": "1.0.0",
+    "contact": {
+      "name": "LingoLab"
+    }
+  },
+  "routes": {
+    "routesDir": "src",
+    "routesFileName": "routes.ts",
+    "middleware": "express",
+    "basePath": "/api"
+  }
+}
