@@ -8,6 +8,7 @@ import {
 } from "../dtos/scoring-job.dto";
 import { ScoringJobService } from "../services/scoring-job.service";
 import { ScoringJobStatus } from "../entities/ScoringJob";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 @Route("/api/scoring-jobs")
 @Tags("ScoringJob")
@@ -50,7 +51,7 @@ export class ScoringJobController extends Controller {
   async getAllScoringJobs(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: ScoringJobListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<ScoringJobListDTO>> {
     return await this.scoringJobService.getAllScoringJobs(limit, offset);
   }
 
@@ -62,7 +63,7 @@ export class ScoringJobController extends Controller {
     @Path() status: ScoringJobStatus,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: ScoringJobListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<ScoringJobListDTO>> {
     return await this.scoringJobService.getScoringJobsByStatus(status, limit, offset);
   }
 
@@ -78,7 +79,7 @@ export class ScoringJobController extends Controller {
    * Get scoring jobs with filter
    */
   @Post("filter")
-  async getScoringJobsByFilter(@Body() filter: ScoringJobFilterDTO): Promise<{ data: ScoringJobListDTO[]; total: number }> {
+  async getScoringJobsByFilter(@Body() filter: ScoringJobFilterDTO): Promise<PaginatedResponseDTO<ScoringJobListDTO>> {
     return await this.scoringJobService.getScoringJobsByFilter(filter);
   }
 

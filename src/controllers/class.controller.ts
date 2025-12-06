@@ -10,6 +10,7 @@ import {
   EnrollByCodeDTO,
   RemoveLearnerDTO,
 } from "../dtos/class.dto";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 import { ClassService } from "../services/class.service";
 
 @Route("/api/classes")
@@ -43,7 +44,7 @@ export class ClassController extends Controller {
   async getAllClasses(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: ClassListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
     return await this.classService.getAllClasses(limit, offset);
   }
 
@@ -55,7 +56,7 @@ export class ClassController extends Controller {
     @Path() teacherId: string,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: ClassListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
     return await this.classService.getClassesByTeacher(teacherId, limit, offset);
   }
 
@@ -73,7 +74,7 @@ export class ClassController extends Controller {
    * Get classes with filter
    */
   @Post("filter")
-  async getClassesByFilter(@Body() filter: ClassFilterDTO): Promise<{ data: ClassListDTO[]; total: number }> {
+  async getClassesByFilter(@Body() filter: ClassFilterDTO): Promise<PaginatedResponseDTO<ClassListDTO>> {
     return await this.classService.getClassesByFilter(filter);
   }
 

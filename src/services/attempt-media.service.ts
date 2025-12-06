@@ -8,6 +8,8 @@ import {
 } from "../dtos/attempt-media.dto";
 import { AttemptMedia, MediaType } from "../entities/AttemptMedia";
 import { Attempt } from "../entities/Attempt";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class AttemptMediaService {
   private attemptMediaRepository = AppDataSource.getRepository(AttemptMedia);
@@ -51,18 +53,17 @@ export class AttemptMediaService {
   }
 
   // Get all media
-  async getAllMedia(limit: number = 10, offset: number = 0): Promise<{
-    data: AttemptMediaListDTO[];
-    total: number;
-  }> {
+  async getAllMedia(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptMediaListDTO>> {
     const [mediaList, total] = await this.attemptMediaRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: mediaList.map((m) => this.mapToListDTO(m)),
+    return createPaginatedResponse(
+      mediaList.map((m) => this.mapToListDTO(m)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get media by attempt
@@ -74,19 +75,18 @@ export class AttemptMediaService {
   }
 
   // Get media by type
-  async getMediaByType(mediaType: MediaType, limit: number = 10, offset: number = 0): Promise<{
-    data: AttemptMediaListDTO[];
-    total: number;
-  }> {
+  async getMediaByType(mediaType: MediaType, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptMediaListDTO>> {
     const [mediaList, total] = await this.attemptMediaRepository.findAndCount({
       where: { mediaType },
       take: limit,
       skip: offset,
     });
-    return {
-      data: mediaList.map((m) => this.mapToListDTO(m)),
+    return createPaginatedResponse(
+      mediaList.map((m) => this.mapToListDTO(m)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Update media

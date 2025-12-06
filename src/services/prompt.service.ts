@@ -9,6 +9,8 @@ import {
 } from "../dtos/prompt.dto";
 import { Prompt, SkillType, DifficultyLevel } from "../entities/Prompt";
 import { User } from "../entities/User";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class PromptService {
   private promptRepository = AppDataSource.getRepository(Prompt);
@@ -55,57 +57,51 @@ export class PromptService {
   }
 
   // Get all prompts
-  async getAllPrompts(limit: number = 10, offset: number = 0): Promise<{
-    data: PromptListDTO[];
-    total: number;
-  }> {
+  async getAllPrompts(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<PromptListDTO>> {
     const [prompts, total] = await this.promptRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: prompts.map((p) => this.mapToListDTO(p)),
+    return createPaginatedResponse(
+      prompts.map((p) => this.mapToListDTO(p)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get prompts by skill type
-  async getPromptsBySkillType(skillType: SkillType, limit: number = 10, offset: number = 0): Promise<{
-    data: PromptListDTO[];
-    total: number;
-  }> {
+  async getPromptsBySkillType(skillType: SkillType, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<PromptListDTO>> {
     const [prompts, total] = await this.promptRepository.findAndCount({
       where: { skillType },
       take: limit,
       skip: offset,
     });
-    return {
-      data: prompts.map((p) => this.mapToListDTO(p)),
+    return createPaginatedResponse(
+      prompts.map((p) => this.mapToListDTO(p)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get prompts by difficulty
-  async getPromptsByDifficulty(difficulty: DifficultyLevel, limit: number = 10, offset: number = 0): Promise<{
-    data: PromptListDTO[];
-    total: number;
-  }> {
+  async getPromptsByDifficulty(difficulty: DifficultyLevel, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<PromptListDTO>> {
     const [prompts, total] = await this.promptRepository.findAndCount({
       where: { difficulty },
       take: limit,
       skip: offset,
     });
-    return {
-      data: prompts.map((p) => this.mapToListDTO(p)),
+    return createPaginatedResponse(
+      prompts.map((p) => this.mapToListDTO(p)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get prompts by skill and difficulty
-  async getPromptsByFilter(filter: PromptFilterDTO): Promise<{
-    data: PromptListDTO[];
-    total: number;
-  }> {
+  async getPromptsByFilter(filter: PromptFilterDTO): Promise<PaginatedResponseDTO<PromptListDTO>> {
     const limit = filter.limit || 10;
     const offset = filter.offset || 0;
 
@@ -118,10 +114,12 @@ export class PromptService {
         take: limit,
         skip: offset,
       });
-      return {
-        data: prompts.map((p) => this.mapToListDTO(p)),
+      return createPaginatedResponse(
+        prompts.map((p) => this.mapToListDTO(p)),
         total,
-      };
+        limit,
+        offset
+      );
     }
 
     if (filter.skillType) {
@@ -136,19 +134,18 @@ export class PromptService {
   }
 
   // Get prompts by creator
-  async getPromptsByCreator(creatorId: string, limit: number = 10, offset: number = 0): Promise<{
-    data: PromptListDTO[];
-    total: number;
-  }> {
+  async getPromptsByCreator(creatorId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<PromptListDTO>> {
     const [prompts, total] = await this.promptRepository.findAndCount({
       where: { createdBy: creatorId },
       take: limit,
       skip: offset,
     });
-    return {
-      data: prompts.map((p) => this.mapToListDTO(p)),
+    return createPaginatedResponse(
+      prompts.map((p) => this.mapToListDTO(p)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Update prompt

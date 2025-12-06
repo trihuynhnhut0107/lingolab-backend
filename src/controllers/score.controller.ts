@@ -8,6 +8,7 @@ import {
   ScorePaginationDTO,
 } from "../dtos/score.dto";
 import { ScoreService } from "../services/score.service";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 @Route("/api/scores")
 @Tags("Score")
@@ -50,7 +51,7 @@ export class ScoreController extends Controller {
   async getAllScores(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: ScoreListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     return await this.scoreService.getAllScores(limit, offset);
   }
 
@@ -62,7 +63,7 @@ export class ScoreController extends Controller {
     @Path() band: number,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: ScoreListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     return await this.scoreService.getScoresByBand(band, limit, offset);
   }
 
@@ -75,7 +76,7 @@ export class ScoreController extends Controller {
     @Path() maxBand: number,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: ScoreListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     return await this.scoreService.getScoresByBandRange(minBand, maxBand, limit, offset);
   }
 

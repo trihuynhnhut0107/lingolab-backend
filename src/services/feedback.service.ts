@@ -10,6 +10,8 @@ import {
 import { Feedback, FeedbackType, FeedbackVisibility } from "../entities/Feedback";
 import { Attempt } from "../entities/Attempt";
 import { User } from "../entities/User";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class FeedbackService {
   private feedbackRepository = AppDataSource.getRepository(Feedback);
@@ -56,18 +58,17 @@ export class FeedbackService {
   }
 
   // Get all feedback
-  async getAllFeedback(limit: number = 10, offset: number = 0): Promise<{
-    data: FeedbackListDTO[];
-    total: number;
-  }> {
+  async getAllFeedback(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     const [feedbacks, total] = await this.feedbackRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: feedbacks.map((f) => this.mapToListDTO(f)),
+    return createPaginatedResponse(
+      feedbacks.map((f) => this.mapToListDTO(f)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get feedback by attempt
@@ -90,35 +91,33 @@ export class FeedbackService {
   }
 
   // Get feedback by author
-  async getFeedbackByAuthor(authorId: string, limit: number = 10, offset: number = 0): Promise<{
-    data: FeedbackListDTO[];
-    total: number;
-  }> {
+  async getFeedbackByAuthor(authorId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     const [feedbacks, total] = await this.feedbackRepository.findAndCount({
       where: { authorId },
       take: limit,
       skip: offset,
     });
-    return {
-      data: feedbacks.map((f) => this.mapToListDTO(f)),
+    return createPaginatedResponse(
+      feedbacks.map((f) => this.mapToListDTO(f)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get feedback by type
-  async getFeedbackByType(type: FeedbackType, limit: number = 10, offset: number = 0): Promise<{
-    data: FeedbackListDTO[];
-    total: number;
-  }> {
+  async getFeedbackByType(type: FeedbackType, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     const [feedbacks, total] = await this.feedbackRepository.findAndCount({
       where: { type },
       take: limit,
       skip: offset,
     });
-    return {
-      data: feedbacks.map((f) => this.mapToListDTO(f)),
+    return createPaginatedResponse(
+      feedbacks.map((f) => this.mapToListDTO(f)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get feedback by visibility
@@ -126,26 +125,22 @@ export class FeedbackService {
     visibility: FeedbackVisibility,
     limit: number = 10,
     offset: number = 0
-  ): Promise<{
-    data: FeedbackListDTO[];
-    total: number;
-  }> {
+  ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     const [feedbacks, total] = await this.feedbackRepository.findAndCount({
       where: { visibility },
       take: limit,
       skip: offset,
     });
-    return {
-      data: feedbacks.map((f) => this.mapToListDTO(f)),
+    return createPaginatedResponse(
+      feedbacks.map((f) => this.mapToListDTO(f)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get feedback with filter
-  async getFeedbackByFilter(attemptId: string, filter: FeedbackFilterDTO): Promise<{
-    data: FeedbackListDTO[];
-    total: number;
-  }> {
+  async getFeedbackByFilter(attemptId: string, filter: FeedbackFilterDTO): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     const feedbacks = await this.feedbackRepository.find({
       where: { attemptId },
     });
@@ -164,10 +159,12 @@ export class FeedbackService {
     const offset = filter.offset || 0;
     const paginated = filtered.slice(offset, offset + limit);
 
-    return {
-      data: paginated.map((f) => this.mapToListDTO(f)),
-      total: filtered.length,
-    };
+    return createPaginatedResponse(
+      paginated.map((f) => this.mapToListDTO(f)),
+      filtered.length,
+      limit,
+      offset
+    );
   }
 
   // Update feedback

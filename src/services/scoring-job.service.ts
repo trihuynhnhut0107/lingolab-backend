@@ -8,6 +8,8 @@ import {
 } from "../dtos/scoring-job.dto";
 import { ScoringJob, ScoringJobStatus } from "../entities/ScoringJob";
 import { Attempt } from "../entities/Attempt";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class ScoringJobService {
   private scoringJobRepository = AppDataSource.getRepository(ScoringJob);
@@ -58,34 +60,32 @@ export class ScoringJobService {
   }
 
   // Get all jobs
-  async getAllScoringJobs(limit: number = 10, offset: number = 0): Promise<{
-    data: ScoringJobListDTO[];
-    total: number;
-  }> {
+  async getAllScoringJobs(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ScoringJobListDTO>> {
     const [jobs, total] = await this.scoringJobRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: jobs.map((j) => this.mapToListDTO(j)),
+    return createPaginatedResponse(
+      jobs.map((j) => this.mapToListDTO(j)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get jobs by status
-  async getScoringJobsByStatus(status: ScoringJobStatus, limit: number = 10, offset: number = 0): Promise<{
-    data: ScoringJobListDTO[];
-    total: number;
-  }> {
+  async getScoringJobsByStatus(status: ScoringJobStatus, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ScoringJobListDTO>> {
     const [jobs, total] = await this.scoringJobRepository.findAndCount({
       where: { status },
       take: limit,
       skip: offset,
     });
-    return {
-      data: jobs.map((j) => this.mapToListDTO(j)),
+    return createPaginatedResponse(
+      jobs.map((j) => this.mapToListDTO(j)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get pending jobs (for worker processing)
@@ -99,10 +99,7 @@ export class ScoringJobService {
   }
 
   // Get jobs with filter
-  async getScoringJobsByFilter(filter: ScoringJobFilterDTO): Promise<{
-    data: ScoringJobListDTO[];
-    total: number;
-  }> {
+  async getScoringJobsByFilter(filter: ScoringJobFilterDTO): Promise<PaginatedResponseDTO<ScoringJobListDTO>> {
     const limit = filter.limit || 10;
     const offset = filter.offset || 0;
 

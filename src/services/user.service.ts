@@ -7,6 +7,8 @@ import {
   UserListDTO,
 } from "../dtos/user.dto";
 import { User, UserRole, UserStatus } from "../entities/User";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class UserService {
   private userRepository = AppDataSource.getRepository(User);
@@ -52,18 +54,17 @@ export class UserService {
   }
 
   // Get all users
-  async getAllUsers(limit: number = 10, offset: number = 0): Promise<{
-    data: UserListDTO[];
-    total: number;
-  }> {
+  async getAllUsers(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<UserListDTO>> {
     const [users, total] = await this.userRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: users.map((u) => this.mapToListDTO(u)),
+    return createPaginatedResponse(
+      users.map((u) => this.mapToListDTO(u)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get users by role
@@ -71,34 +72,27 @@ export class UserService {
     role: UserRole,
     limit: number = 10,
     offset: number = 0
-  ): Promise<{
-    data: UserListDTO[];
-    total: number;
-  }> {
+  ): Promise<PaginatedResponseDTO<UserListDTO>> {
     const [users, total] = await this.userRepository.findAndCount({
       where: { role },
       take: limit,
       skip: offset,
     });
-    return {
-      data: users.map((u) => this.mapToListDTO(u)),
+    return createPaginatedResponse(
+      users.map((u) => this.mapToListDTO(u)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get learners
-  async getLearners(limit: number = 10, offset: number = 0): Promise<{
-    data: UserListDTO[];
-    total: number;
-  }> {
+  async getLearners(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<UserListDTO>> {
     return this.getUsersByRole(UserRole.LEARNER, limit, offset);
   }
 
   // Get teachers
-  async getTeachers(limit: number = 10, offset: number = 0): Promise<{
-    data: UserListDTO[];
-    total: number;
-  }> {
+  async getTeachers(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<UserListDTO>> {
     return this.getUsersByRole(UserRole.TEACHER, limit, offset);
   }
 

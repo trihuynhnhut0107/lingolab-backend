@@ -9,6 +9,7 @@ import {
 } from "../dtos/prompt.dto";
 import { PromptService } from "../services/prompt.service";
 import { SkillType, DifficultyLevel } from "../entities/Prompt";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 @Route("/api/prompts")
 @Tags("Prompt")
@@ -45,7 +46,7 @@ export class PromptController extends Controller {
   async getAllPrompts(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: PromptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<PromptListDTO>> {
     return await this.promptService.getAllPrompts(limit, offset);
   }
 
@@ -57,7 +58,7 @@ export class PromptController extends Controller {
     @Path() skillType: SkillType,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: PromptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<PromptListDTO>> {
     return await this.promptService.getPromptsBySkillType(skillType, limit, offset);
   }
 
@@ -69,7 +70,7 @@ export class PromptController extends Controller {
     @Path() difficulty: DifficultyLevel,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: PromptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<PromptListDTO>> {
     return await this.promptService.getPromptsByDifficulty(difficulty, limit, offset);
   }
 
@@ -81,7 +82,7 @@ export class PromptController extends Controller {
     @Path() creatorId: string,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: PromptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<PromptListDTO>> {
     return await this.promptService.getPromptsByCreator(creatorId, limit, offset);
   }
 
@@ -89,7 +90,7 @@ export class PromptController extends Controller {
    * Get prompts with filter
    */
   @Post("filter")
-  async getPromptsByFilter(@Body() filter: PromptFilterDTO): Promise<{ data: PromptListDTO[]; total: number }> {
+  async getPromptsByFilter(@Body() filter: PromptFilterDTO): Promise<PaginatedResponseDTO<PromptListDTO>> {
     return await this.promptService.getPromptsByFilter(filter);
   }
 

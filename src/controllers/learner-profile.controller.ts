@@ -6,6 +6,7 @@ import {
   LearnerProfileDetailDTO,
 } from "../dtos/learner-profile.dto";
 import { LearnerProfileService } from "../services/learner-profile.service";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 @Route("/api/learner-profiles")
 @Tags("LearnerProfile")
@@ -48,7 +49,7 @@ export class LearnerProfileController extends Controller {
   async getAllLearnerProfiles(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: LearnerProfileDetailDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<LearnerProfileDetailDTO>> {
     return await this.learnerProfileService.getAllLearnerProfiles(limit, offset);
   }
 

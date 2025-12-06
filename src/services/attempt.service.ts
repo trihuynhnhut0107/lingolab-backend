@@ -11,6 +11,8 @@ import {
 import { Attempt, AttemptStatus } from "../entities/Attempt";
 import { SkillType, Prompt } from "../entities/Prompt";
 import { User } from "../entities/User";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class AttemptService {
   private attemptRepository = AppDataSource.getRepository(Attempt);
@@ -56,34 +58,32 @@ export class AttemptService {
   }
 
   // Get all attempts
-  async getAllAttempts(limit: number = 10, offset: number = 0): Promise<{
-    data: AttemptListDTO[];
-    total: number;
-  }> {
+  async getAllAttempts(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: attempts.map((a) => this.mapToListDTO(a)),
+    return createPaginatedResponse(
+      attempts.map((a) => this.mapToListDTO(a)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get attempts by learner
-  async getAttemptsByLearner(learnerId: string, limit: number = 10, offset: number = 0): Promise<{
-    data: AttemptListDTO[];
-    total: number;
-  }> {
+  async getAttemptsByLearner(learnerId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { learnerId },
       take: limit,
       skip: offset,
     });
-    return {
-      data: attempts.map((a) => this.mapToListDTO(a)),
+    return createPaginatedResponse(
+      attempts.map((a) => this.mapToListDTO(a)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get attempts by learner and status
@@ -92,74 +92,67 @@ export class AttemptService {
     status: AttemptStatus,
     limit: number = 10,
     offset: number = 0
-  ): Promise<{
-    data: AttemptListDTO[];
-    total: number;
-  }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { learnerId, status },
       take: limit,
       skip: offset,
     });
-    return {
-      data: attempts.map((a) => this.mapToListDTO(a)),
+    return createPaginatedResponse(
+      attempts.map((a) => this.mapToListDTO(a)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get attempts by prompt
-  async getAttemptsByPrompt(promptId: string, limit: number = 10, offset: number = 0): Promise<{
-    data: AttemptListDTO[];
-    total: number;
-  }> {
+  async getAttemptsByPrompt(promptId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { promptId },
       take: limit,
       skip: offset,
     });
-    return {
-      data: attempts.map((a) => this.mapToListDTO(a)),
+    return createPaginatedResponse(
+      attempts.map((a) => this.mapToListDTO(a)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get attempts by status
-  async getAttemptsByStatus(status: AttemptStatus, limit: number = 10, offset: number = 0): Promise<{
-    data: AttemptListDTO[];
-    total: number;
-  }> {
+  async getAttemptsByStatus(status: AttemptStatus, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { status },
       take: limit,
       skip: offset,
     });
-    return {
-      data: attempts.map((a) => this.mapToListDTO(a)),
+    return createPaginatedResponse(
+      attempts.map((a) => this.mapToListDTO(a)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get attempts by skill type
-  async getAttemptsBySkillType(skillType: SkillType, limit: number = 10, offset: number = 0): Promise<{
-    data: AttemptListDTO[];
-    total: number;
-  }> {
+  async getAttemptsBySkillType(skillType: SkillType, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { skillType },
       take: limit,
       skip: offset,
     });
-    return {
-      data: attempts.map((a) => this.mapToListDTO(a)),
+    return createPaginatedResponse(
+      attempts.map((a) => this.mapToListDTO(a)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get attempts with filter
-  async getAttemptsByFilter(learnerId: string, filter: AttemptFilterDTO): Promise<{
-    data: AttemptListDTO[];
-    total: number;
-  }> {
+  async getAttemptsByFilter(learnerId: string, filter: AttemptFilterDTO): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const limit = filter.limit || 10;
     const offset = filter.offset || 0;
 

@@ -8,6 +8,8 @@ import {
 } from "../dtos/score.dto";
 import { Score } from "../entities/Score";
 import { Attempt, AttemptStatus } from "../entities/Attempt";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class ScoreService {
   private scoreRepository = AppDataSource.getRepository(Score);
@@ -81,25 +83,21 @@ export class ScoreService {
   }
 
   // Get all scores
-  async getAllScores(limit: number = 10, offset: number = 0): Promise<{
-    data: ScoreListDTO[];
-    total: number;
-  }> {
+  async getAllScores(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     const [scores, total] = await this.scoreRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: scores.map((s) => this.mapToListDTO(s)),
+    return createPaginatedResponse(
+      scores.map((s) => this.mapToListDTO(s)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get scores by band
-  async getScoresByBand(band: number, limit: number = 10, offset: number = 0): Promise<{
-    data: ScoreListDTO[];
-    total: number;
-  }> {
+  async getScoresByBand(band: number, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     if (band < 5 || band > 9) {
       throw new Error("Band must be between 5 and 9");
     }
@@ -109,17 +107,16 @@ export class ScoreService {
       take: limit,
       skip: offset,
     });
-    return {
-      data: scores.map((s) => this.mapToListDTO(s)),
+    return createPaginatedResponse(
+      scores.map((s) => this.mapToListDTO(s)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get scores by band range
-  async getScoresByBandRange(minBand: number, maxBand: number, limit: number = 10, offset: number = 0): Promise<{
-    data: ScoreListDTO[];
-    total: number;
-  }> {
+  async getScoresByBandRange(minBand: number, maxBand: number, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     if (minBand < 5 || maxBand > 9 || minBand > maxBand) {
       throw new Error("Invalid band range");
     }
@@ -131,10 +128,12 @@ export class ScoreService {
       .skip(offset)
       .getManyAndCount();
 
-    return {
-      data: scores.map((s) => this.mapToListDTO(s)),
+    return createPaginatedResponse(
+      scores.map((s) => this.mapToListDTO(s)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Update score
