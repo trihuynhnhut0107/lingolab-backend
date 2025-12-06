@@ -6,6 +6,7 @@ import {
   UserDetailResponseDTO,
   UserListDTO,
 } from "../dtos/user.dto";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 import { UserService } from "../services/user.service";
 import { UserRole, UserStatus } from "../entities/User";
 
@@ -50,7 +51,7 @@ export class UserController extends Controller {
   async getAllUsers(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: UserListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<UserListDTO>> {
     return await this.userService.getAllUsers(limit, offset);
   }
 
@@ -62,7 +63,7 @@ export class UserController extends Controller {
     @Path() role: UserRole,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: UserListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<UserListDTO>> {
     return await this.userService.getUsersByRole(role, limit, offset);
   }
 
@@ -73,7 +74,7 @@ export class UserController extends Controller {
   async getLearners(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: UserListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<UserListDTO>> {
     return await this.userService.getLearners(limit, offset);
   }
 
@@ -84,7 +85,7 @@ export class UserController extends Controller {
   async getTeachers(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: UserListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<UserListDTO>> {
     return await this.userService.getTeachers(limit, offset);
   }
 

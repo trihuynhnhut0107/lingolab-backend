@@ -9,6 +9,7 @@ import {
 } from "../dtos/feedback.dto";
 import { FeedbackService } from "../services/feedback.service";
 import { FeedbackType, FeedbackVisibility } from "../entities/Feedback";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 @Route("/api/feedback")
 @Tags("Feedback")
@@ -41,7 +42,7 @@ export class FeedbackController extends Controller {
   async getAllFeedback(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: FeedbackListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     return await this.feedbackService.getAllFeedback(limit, offset);
   }
 
@@ -72,7 +73,7 @@ export class FeedbackController extends Controller {
     @Path() authorId: string,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: FeedbackListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     return await this.feedbackService.getFeedbackByAuthor(authorId, limit, offset);
   }
 
@@ -84,7 +85,7 @@ export class FeedbackController extends Controller {
     @Path() type: FeedbackType,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: FeedbackListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     return await this.feedbackService.getFeedbackByType(type, limit, offset);
   }
 
@@ -96,7 +97,7 @@ export class FeedbackController extends Controller {
     @Path() visibility: FeedbackVisibility,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: FeedbackListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     return await this.feedbackService.getFeedbackByVisibility(visibility, limit, offset);
   }
 
@@ -107,7 +108,7 @@ export class FeedbackController extends Controller {
   async getFeedbackByFilter(
     @Path() attemptId: string,
     @Body() filter: FeedbackFilterDTO
-  ): Promise<{ data: FeedbackListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
     return await this.feedbackService.getFeedbackByFilter(attemptId, filter);
   }
 

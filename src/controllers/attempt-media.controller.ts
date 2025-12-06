@@ -8,6 +8,7 @@ import {
 } from "../dtos/attempt-media.dto";
 import { AttemptMediaService } from "../services/attempt-media.service";
 import { MediaType } from "../entities/AttemptMedia";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 @Route("/api/attempt-media")
 @Tags("AttemptMedia")
@@ -40,7 +41,7 @@ export class AttemptMediaController extends Controller {
   async getAllMedia(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptMediaListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptMediaListDTO>> {
     return await this.attemptMediaService.getAllMedia(limit, offset);
   }
 
@@ -60,7 +61,7 @@ export class AttemptMediaController extends Controller {
     @Path() mediaType: MediaType,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptMediaListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptMediaListDTO>> {
     return await this.attemptMediaService.getMediaByType(mediaType, limit, offset);
   }
 

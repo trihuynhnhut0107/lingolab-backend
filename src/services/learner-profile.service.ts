@@ -7,6 +7,8 @@ import {
 } from "../dtos/learner-profile.dto";
 import { LearnerProfile } from "../entities/LearnerProfile";
 import { User } from "../entities/User";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class LearnerProfileService {
   private learnerProfileRepository = AppDataSource.getRepository(LearnerProfile);
@@ -66,18 +68,17 @@ export class LearnerProfileService {
   }
 
   // Get all learner profiles
-  async getAllLearnerProfiles(limit: number = 10, offset: number = 0): Promise<{
-    data: LearnerProfileResponseDTO[];
-    total: number;
-  }> {
+  async getAllLearnerProfiles(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<LearnerProfileResponseDTO>> {
     const [profiles, total] = await this.learnerProfileRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: profiles.map((p) => this.mapToResponseDTO(p)),
+    return createPaginatedResponse(
+      profiles.map((p) => this.mapToResponseDTO(p)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Update learner profile

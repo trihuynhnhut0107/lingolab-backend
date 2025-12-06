@@ -11,6 +11,7 @@ import {
 import { AttemptService } from "../services/attempt.service";
 import { SkillType } from "../entities/Prompt";
 import { AttemptStatus } from "../entities/Attempt";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 @Route("/api/attempts")
 @Tags("Attempt")
@@ -43,7 +44,7 @@ export class AttemptController extends Controller {
   async getAllAttempts(
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     return await this.attemptService.getAllAttempts(limit, offset);
   }
 
@@ -55,7 +56,7 @@ export class AttemptController extends Controller {
     @Path() learnerId: string,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     return await this.attemptService.getAttemptsByLearner(learnerId, limit, offset);
   }
 
@@ -68,7 +69,7 @@ export class AttemptController extends Controller {
     @Path() status: AttemptStatus,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     return await this.attemptService.getAttemptsByLearnerAndStatus(learnerId, status, limit, offset);
   }
 
@@ -80,7 +81,7 @@ export class AttemptController extends Controller {
     @Path() promptId: string,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     return await this.attemptService.getAttemptsByPrompt(promptId, limit, offset);
   }
 
@@ -92,7 +93,7 @@ export class AttemptController extends Controller {
     @Path() status: AttemptStatus,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     return await this.attemptService.getAttemptsByStatus(status, limit, offset);
   }
 
@@ -104,7 +105,7 @@ export class AttemptController extends Controller {
     @Path() skillType: SkillType,
     @Query() limit: number = 10,
     @Query() offset: number = 0
-  ): Promise<{ data: AttemptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     return await this.attemptService.getAttemptsBySkillType(skillType, limit, offset);
   }
 
@@ -115,7 +116,7 @@ export class AttemptController extends Controller {
   async getAttemptsByFilter(
     @Path() learnerId: string,
     @Body() filter: AttemptFilterDTO
-  ): Promise<{ data: AttemptListDTO[]; total: number }> {
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     return await this.attemptService.getAttemptsByFilter(learnerId, filter);
   }
 

@@ -13,6 +13,8 @@ import {
 } from "../dtos/class.dto";
 import { Class } from "../entities/Class";
 import { User } from "../entities/User";
+import { createPaginatedResponse } from "../utils/pagination.utils";
+import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
 export class ClassService {
   private classRepository = AppDataSource.getRepository(Class);
@@ -58,34 +60,32 @@ export class ClassService {
   }
 
   // Get all classes
-  async getAllClasses(limit: number = 10, offset: number = 0): Promise<{
-    data: ClassListDTO[];
-    total: number;
-  }> {
+  async getAllClasses(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const [classes, total] = await this.classRepository.findAndCount({
       take: limit,
       skip: offset,
     });
-    return {
-      data: classes.map((c) => this.mapToListDTO(c)),
+    return createPaginatedResponse(
+      classes.map((c) => this.mapToListDTO(c)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get classes by teacher
-  async getClassesByTeacher(teacherId: string, limit: number = 10, offset: number = 0): Promise<{
-    data: ClassListDTO[];
-    total: number;
-  }> {
+  async getClassesByTeacher(teacherId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const [classes, total] = await this.classRepository.findAndCount({
       where: { teacherId },
       take: limit,
       skip: offset,
     });
-    return {
-      data: classes.map((c) => this.mapToListDTO(c)),
+    return createPaginatedResponse(
+      classes.map((c) => this.mapToListDTO(c)),
       total,
-    };
+      limit,
+      offset
+    );
   }
 
   // Get class by code
@@ -101,10 +101,7 @@ export class ClassService {
   }
 
   // Get classes with filter
-  async getClassesByFilter(filter: ClassFilterDTO): Promise<{
-    data: ClassListDTO[];
-    total: number;
-  }> {
+  async getClassesByFilter(filter: ClassFilterDTO): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const limit = filter.limit || 10;
     const offset = filter.offset || 0;
     return this.getAllClasses(limit, offset);
