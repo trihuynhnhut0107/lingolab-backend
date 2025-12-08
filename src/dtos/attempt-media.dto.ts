@@ -1,4 +1,4 @@
-import { MediaType } from "../entities/AttemptMedia";
+import { MediaType } from "../enums";
 
 /**
  * AttemptMedia DTOs

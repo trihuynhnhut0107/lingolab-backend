@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Route, Body, Path, Query, Response, Tags } from "tsoa";
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Body,
+  Path,
+  Query,
+  Response,
+  Tags,
+  Request,
+  Security,
+} from "tsoa";
 import {
   CreateFeedbackDTO,
   UpdateFeedbackDTO,
@@ -10,18 +24,27 @@ import {
 import { FeedbackService } from "../services/feedback.service";
 import { FeedbackType, FeedbackVisibility } from "../entities/Feedback";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { TeacherOnly, Authenticated } from "../decorators/auth.decorator";
+import { AuthRequest } from "../middleware/auth.middleware";
 
-@Route("/api/feedback")
+@Route("/feedback")
 @Tags("Feedback")
 export class FeedbackController extends Controller {
   private feedbackService = new FeedbackService();
 
   /**
    * Create feedback
+   * Requires: Teacher or Admin role
    */
   @Post()
   @Response(201, "Feedback created successfully")
-  async createFeedback(@Body() dto: CreateFeedbackDTO): Promise<FeedbackResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can create feedback")
+  @Security("bearer")
+  @TeacherOnly()
+  async createFeedback(
+    @Body() dto: CreateFeedbackDTO
+  ): Promise<FeedbackResponseDTO> {
     return await this.feedbackService.createFeedback(dto);
   }
 
@@ -50,7 +73,9 @@ export class FeedbackController extends Controller {
    * Get feedback by attempt
    */
   @Get("attempt/{attemptId}")
-  async getFeedbackByAttempt(@Path() attemptId: string): Promise<FeedbackResponseDTO[]> {
+  async getFeedbackByAttempt(
+    @Path() attemptId: string
+  ): Promise<FeedbackResponseDTO[]> {
     return await this.feedbackService.getFeedbackByAttempt(attemptId);
   }
 
@@ -62,7 +87,10 @@ export class FeedbackController extends Controller {
     @Path() attemptId: string,
     @Path() visibility: FeedbackVisibility
   ): Promise<FeedbackResponseDTO[]> {
-    return await this.feedbackService.getFeedbackByAttemptAndVisibility(attemptId, visibility);
+    return await this.feedbackService.getFeedbackByAttemptAndVisibility(
+      attemptId,
+      visibility
+    );
   }
 
   /**
@@ -74,7 +102,11 @@ export class FeedbackController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
-    return await this.feedbackService.getFeedbackByAuthor(authorId, limit, offset);
+    return await this.feedbackService.getFeedbackByAuthor(
+      authorId,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -98,7 +130,11 @@ export class FeedbackController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<FeedbackListDTO>> {
-    return await this.feedbackService.getFeedbackByVisibility(visibility, limit, offset);
+    return await this.feedbackService.getFeedbackByVisibility(
+      visibility,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -114,11 +150,19 @@ export class FeedbackController extends Controller {
 
   /**
    * Update feedback
+   * Requires: Teacher or Admin role
    */
   @Put("{id}")
   @Response(200, "Feedback updated successfully")
   @Response(404, "Feedback not found")
-  async updateFeedback(@Path() id: string, @Body() dto: UpdateFeedbackDTO): Promise<FeedbackResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can update feedback")
+  @Security("bearer")
+  @TeacherOnly()
+  async updateFeedback(
+    @Path() id: string,
+    @Body() dto: UpdateFeedbackDTO
+  ): Promise<FeedbackResponseDTO> {
     return await this.feedbackService.updateFeedback(id, dto);
   }
 
@@ -126,8 +170,12 @@ export class FeedbackController extends Controller {
    * Get feedback count by attempt
    */
   @Get("{attemptId}/count")
-  async getFeedbackCountByAttempt(@Path() attemptId: string): Promise<{ count: number }> {
-    const count = await this.feedbackService.getFeedbackCountByAttempt(attemptId);
+  async getFeedbackCountByAttempt(
+    @Path() attemptId: string
+  ): Promise<{ count: number }> {
+    const count = await this.feedbackService.getFeedbackCountByAttempt(
+      attemptId
+    );
     return { count };
   }
 
@@ -135,7 +183,9 @@ export class FeedbackController extends Controller {
    * Get feedback count by author
    */
   @Get("author/{authorId}/count")
-  async getFeedbackCountByAuthor(@Path() authorId: string): Promise<{ count: number }> {
+  async getFeedbackCountByAuthor(
+    @Path() authorId: string
+  ): Promise<{ count: number }> {
     const count = await this.feedbackService.getFeedbackCountByAuthor(authorId);
     return { count };
   }
@@ -144,17 +194,24 @@ export class FeedbackController extends Controller {
    * Get feedback count by type
    */
   @Get("type/{type}/count")
-  async getFeedbackCountByType(@Path() type: FeedbackType): Promise<{ count: number }> {
+  async getFeedbackCountByType(
+    @Path() type: FeedbackType
+  ): Promise<{ count: number }> {
     const count = await this.feedbackService.getFeedbackCountByType(type);
     return { count };
   }
 
   /**
    * Delete feedback
+   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "Feedback deleted successfully")
   @Response(404, "Feedback not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can delete feedback")
+  @Security("bearer")
+  @TeacherOnly()
   async deleteFeedback(@Path() id: string): Promise<void> {
     await this.feedbackService.deleteFeedback(id);
     this.setStatus(204);
@@ -162,10 +219,15 @@ export class FeedbackController extends Controller {
 
   /**
    * Delete all feedback for an attempt
+   * Requires: Teacher or Admin role
    */
   @Delete("attempt/{attemptId}/all")
   @Response(204, "All feedback deleted successfully")
   @Response(404, "Attempt not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can delete feedback")
+  @Security("bearer")
+  @TeacherOnly()
   async deleteFeedbackByAttempt(@Path() attemptId: string): Promise<number> {
     return await this.feedbackService.deleteFeedbackByAttempt(attemptId);
   }

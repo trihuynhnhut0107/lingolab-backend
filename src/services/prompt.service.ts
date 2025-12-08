@@ -7,10 +7,12 @@ import {
   PromptDetailDTO,
   PromptFilterDTO,
 } from "../dtos/prompt.dto";
-import { Prompt, SkillType, DifficultyLevel } from "../entities/Prompt";
+import { Prompt } from "../entities/Prompt";
+import { SkillType, DifficultyLevel } from "../enums";
 import { User } from "../entities/User";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { NotFoundException, ConflictException, InternalServerErrorException, BadRequestException } from "../exceptions/HttpException";
 
 export class PromptService {
   private promptRepository = AppDataSource.getRepository(Prompt);
@@ -21,12 +23,12 @@ export class PromptService {
     // Check if creator exists
     const creator = await this.userRepository.findOne({ where: { id: createdBy } });
     if (!creator) {
-      throw new Error("Creator user not found");
+      throw new NotFoundException(`Creator user with ID '${createdBy}' not found`);
     }
 
     // Validate times
     if (dto.prepTime < 0 || dto.responseTime < 0) {
-      throw new Error("Time values cannot be negative");
+      throw new BadRequestException(`Invalid time values. prepTime (${dto.prepTime}) and responseTime (${dto.responseTime}) cannot be negative`);
     }
 
     const prompt = this.promptRepository.create({
@@ -51,7 +53,7 @@ export class PromptService {
       relations: ["creator", "attempts"],
     });
     if (!prompt) {
-      throw new Error("Prompt not found");
+      throw new NotFoundException(`Prompt with ID '${id}' not found`);
     }
     return this.mapToDetailDTO(prompt);
   }
@@ -152,18 +154,18 @@ export class PromptService {
   async updatePrompt(id: string, dto: UpdatePromptDTO): Promise<PromptResponseDTO> {
     const prompt = await this.promptRepository.findOne({ where: { id } });
     if (!prompt) {
-      throw new Error("Prompt not found");
+      throw new NotFoundException(`Prompt with ID '${id}' not found`);
     }
 
     // Validate times if provided
     if ((dto.prepTime !== undefined && dto.prepTime < 0) || (dto.responseTime !== undefined && dto.responseTime < 0)) {
-      throw new Error("Time values cannot be negative");
+      throw new BadRequestException(`Invalid time values. Time values cannot be negative`);
     }
 
     await this.promptRepository.update(id, dto);
     const updated = await this.promptRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update prompt");
+      throw new InternalServerErrorException(`Failed to update prompt with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -173,7 +175,7 @@ export class PromptService {
   async deletePrompt(id: string): Promise<boolean> {
     const prompt = await this.promptRepository.findOne({ where: { id } });
     if (!prompt) {
-      throw new Error("Prompt not found");
+      throw new NotFoundException(`Prompt with ID '${id}' not found`);
     }
     const result = await this.promptRepository.delete(id);
     return (result.affected ?? 0) > 0;

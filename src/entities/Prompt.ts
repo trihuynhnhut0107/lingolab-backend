@@ -11,17 +11,8 @@ import {
 } from "typeorm";
 import { User } from "./User";
 import { Attempt } from "./Attempt";
-
-export enum SkillType {
-  SPEAKING = "speaking",
-  WRITING = "writing",
-}
-
-export enum DifficultyLevel {
-  EASY = "easy",
-  MEDIUM = "medium",
-  HARD = "hard",
-}
+import { Assignment } from "./Assignment";
+import { SkillType, DifficultyLevel } from "../enums";
 
 @Entity("prompts")
 @Index("idx_prompts_skill_difficulty", ["skillType", "difficulty"])
@@ -75,4 +66,7 @@ export class Prompt {
 
   @OneToMany(() => Attempt, (attempt) => attempt.prompt)
   attempts?: Attempt[];
+
+  @OneToMany(() => Assignment, (assignment) => assignment.prompt)
+  assignments?: Assignment[];
 }

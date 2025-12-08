@@ -6,11 +6,13 @@ import {
   UpdateDateColumn,
   ManyToOne,
   ManyToMany,
+  OneToMany,
   JoinTable,
   JoinColumn,
   Index,
 } from "typeorm";
 import { User } from "./User";
+import { Assignment } from "./Assignment";
 
 @Entity("classes")
 @Index("idx_class_teacher", ["teacherId"])
@@ -44,7 +46,7 @@ export class Class {
   @JoinColumn({ name: "teacher_id" })
   teacher!: User;
 
-  @ManyToMany(() => User, {
+  @ManyToMany(() => User, (user) => user.enrolledClasses, {
     cascade: true,
     onDelete: "CASCADE",
   })
@@ -54,4 +56,7 @@ export class Class {
     inverseJoinColumn: { name: "learner_id", referencedColumnName: "id" },
   })
   learners?: User[];
+
+  @OneToMany(() => Assignment, (assignment) => assignment.class)
+  assignments?: Assignment[];
 }

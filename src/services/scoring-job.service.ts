@@ -6,10 +6,12 @@ import {
   ScoringJobListDTO,
   ScoringJobFilterDTO,
 } from "../dtos/scoring-job.dto";
-import { ScoringJob, ScoringJobStatus } from "../entities/ScoringJob";
+import { ScoringJob } from "../entities/ScoringJob";
+import { ScoringJobStatus } from "../enums";
 import { Attempt } from "../entities/Attempt";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { NotFoundException, ConflictException, InternalServerErrorException, BadRequestException } from "../exceptions/HttpException";
 
 export class ScoringJobService {
   private scoringJobRepository = AppDataSource.getRepository(ScoringJob);
@@ -20,7 +22,7 @@ export class ScoringJobService {
     // Check if attempt exists
     const attempt = await this.attemptRepository.findOne({ where: { id: dto.attemptId } });
     if (!attempt) {
-      throw new Error("Attempt not found");
+      throw new NotFoundException(`Attempt with ID '${dto.attemptId}' not found`);
     }
 
     // Check if job already exists for this attempt
@@ -28,7 +30,7 @@ export class ScoringJobService {
       where: { attemptId: dto.attemptId },
     });
     if (existingJob) {
-      throw new Error("Scoring job already exists for this attempt");
+      throw new ConflictException(`Scoring job already exists for attempt with ID '${dto.attemptId}'`);
     }
 
     const job = this.scoringJobRepository.create({
@@ -45,7 +47,7 @@ export class ScoringJobService {
   async getScoringJobById(id: string): Promise<ScoringJobResponseDTO> {
     const job = await this.scoringJobRepository.findOne({ where: { id } });
     if (!job) {
-      throw new Error("Scoring job not found");
+      throw new NotFoundException(`Scoring job with ID '${id}' not found`);
     }
     return this.mapToResponseDTO(job);
   }
@@ -54,7 +56,7 @@ export class ScoringJobService {
   async getScoringJobByAttemptId(attemptId: string): Promise<ScoringJobResponseDTO> {
     const job = await this.scoringJobRepository.findOne({ where: { attemptId } });
     if (!job) {
-      throw new Error("Scoring job not found");
+      throw new NotFoundException(`Scoring job for attempt with ID '${attemptId}' not found`);
     }
     return this.mapToResponseDTO(job);
   }
@@ -114,7 +116,7 @@ export class ScoringJobService {
   async updateScoringJobStatus(id: string, status: ScoringJobStatus): Promise<ScoringJobResponseDTO> {
     const job = await this.scoringJobRepository.findOne({ where: { id } });
     if (!job) {
-      throw new Error("Scoring job not found");
+      throw new NotFoundException(`Scoring job with ID '${id}' not found`);
     }
 
     await this.scoringJobRepository.update(id, {
@@ -125,7 +127,7 @@ export class ScoringJobService {
 
     const updated = await this.scoringJobRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update scoring job");
+      throw new InternalServerErrorException(`Failed to update scoring job with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -135,7 +137,7 @@ export class ScoringJobService {
   async updateScoringJobError(id: string, errorMessage: string): Promise<ScoringJobResponseDTO> {
     const job = await this.scoringJobRepository.findOne({ where: { id } });
     if (!job) {
-      throw new Error("Scoring job not found");
+      throw new NotFoundException(`Scoring job with ID '${id}' not found`);
     }
 
     const retryCount = (job.retryCount || 0) + 1;
@@ -151,7 +153,7 @@ export class ScoringJobService {
 
     const updated = await this.scoringJobRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update scoring job");
+      throw new InternalServerErrorException(`Failed to update scoring job with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -161,7 +163,7 @@ export class ScoringJobService {
   async deleteScoringJob(id: string): Promise<boolean> {
     const job = await this.scoringJobRepository.findOne({ where: { id } });
     if (!job) {
-      throw new Error("Scoring job not found");
+      throw new NotFoundException(`Scoring job with ID '${id}' not found`);
     }
     const result = await this.scoringJobRepository.delete(id);
     return (result.affected ?? 0) > 0;

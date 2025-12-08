@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Route, Body, Path, Query, Response, Tags } from "tsoa";
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Body,
+  Path,
+  Query,
+  Response,
+  Tags,
+  Request,
+  Security,
+} from "tsoa";
 import {
   CreateAttemptDTO,
   UpdateAttemptDTO,
@@ -9,21 +23,28 @@ import {
   AttemptFilterDTO,
 } from "../dtos/attempt.dto";
 import { AttemptService } from "../services/attempt.service";
-import { SkillType } from "../entities/Prompt";
-import { AttemptStatus } from "../entities/Attempt";
+import { SkillType, AttemptStatus } from "../enums";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { Authenticated, TeacherOnly } from "../decorators/auth.decorator";
+import { AuthRequest } from "../middleware/auth.middleware";
 
-@Route("/api/attempts")
+@Route("/attempts")
 @Tags("Attempt")
 export class AttemptController extends Controller {
   private attemptService = new AttemptService();
 
   /**
    * Create a new attempt
+   * Requires: Authenticated user (learner creating an attempt)
    */
   @Post()
   @Response(201, "Attempt created successfully")
-  async createAttempt(@Body() dto: CreateAttemptDTO): Promise<AttemptResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Security("bearer")
+  @Authenticated()
+  async createAttempt(
+    @Body() dto: CreateAttemptDTO
+  ): Promise<AttemptResponseDTO> {
     return await this.attemptService.createAttempt(dto);
   }
 
@@ -57,7 +78,11 @@ export class AttemptController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
-    return await this.attemptService.getAttemptsByLearner(learnerId, limit, offset);
+    return await this.attemptService.getAttemptsByLearner(
+      learnerId,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -70,7 +95,12 @@ export class AttemptController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
-    return await this.attemptService.getAttemptsByLearnerAndStatus(learnerId, status, limit, offset);
+    return await this.attemptService.getAttemptsByLearnerAndStatus(
+      learnerId,
+      status,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -82,7 +112,11 @@ export class AttemptController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
-    return await this.attemptService.getAttemptsByPrompt(promptId, limit, offset);
+    return await this.attemptService.getAttemptsByPrompt(
+      promptId,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -106,7 +140,11 @@ export class AttemptController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
-    return await this.attemptService.getAttemptsBySkillType(skillType, limit, offset);
+    return await this.attemptService.getAttemptsBySkillType(
+      skillType,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -122,21 +160,35 @@ export class AttemptController extends Controller {
 
   /**
    * Submit an attempt
+   * Requires: Authenticated user (learner submitting their attempt)
    */
   @Put("{id}/submit")
   @Response(200, "Attempt submitted successfully")
   @Response(404, "Attempt not found")
-  async submitAttempt(@Path() id: string, @Body() dto: SubmitAttemptDTO): Promise<AttemptResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Security("bearer")
+  @Authenticated()
+  async submitAttempt(
+    @Path() id: string,
+    @Body() dto: SubmitAttemptDTO
+  ): Promise<AttemptResponseDTO> {
     return await this.attemptService.submitAttempt(id, dto);
   }
 
   /**
    * Update attempt
+   * Requires: Authenticated user (learner updating their attempt)
    */
   @Put("{id}")
   @Response(200, "Attempt updated successfully")
   @Response(404, "Attempt not found")
-  async updateAttempt(@Path() id: string, @Body() dto: UpdateAttemptDTO): Promise<AttemptResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Security("bearer")
+  @Authenticated()
+  async updateAttempt(
+    @Path() id: string,
+    @Body() dto: UpdateAttemptDTO
+  ): Promise<AttemptResponseDTO> {
     return await this.attemptService.updateAttempt(id, dto);
   }
 
@@ -144,7 +196,9 @@ export class AttemptController extends Controller {
    * Get attempt count by learner
    */
   @Get("learner/{learnerId}/count")
-  async getAttemptCountByLearner(@Path() learnerId: string): Promise<{ count: number }> {
+  async getAttemptCountByLearner(
+    @Path() learnerId: string
+  ): Promise<{ count: number }> {
     const count = await this.attemptService.getAttemptCountByLearner(learnerId);
     return { count };
   }
@@ -153,8 +207,12 @@ export class AttemptController extends Controller {
    * Get submitted attempts count by learner
    */
   @Get("learner/{learnerId}/submitted-count")
-  async getSubmittedAttemptsCount(@Path() learnerId: string): Promise<{ count: number }> {
-    const count = await this.attemptService.getSubmittedAttemptsCount(learnerId);
+  async getSubmittedAttemptsCount(
+    @Path() learnerId: string
+  ): Promise<{ count: number }> {
+    const count = await this.attemptService.getSubmittedAttemptsCount(
+      learnerId
+    );
     return { count };
   }
 
@@ -162,17 +220,23 @@ export class AttemptController extends Controller {
    * Get scored attempts count by learner
    */
   @Get("learner/{learnerId}/scored-count")
-  async getScoredAttemptsCount(@Path() learnerId: string): Promise<{ count: number }> {
+  async getScoredAttemptsCount(
+    @Path() learnerId: string
+  ): Promise<{ count: number }> {
     const count = await this.attemptService.getScoredAttemptsCount(learnerId);
     return { count };
   }
 
   /**
    * Delete attempt
+   * Requires: Authenticated user (learner or teacher)
    */
   @Delete("{id}")
   @Response(204, "Attempt deleted successfully")
   @Response(404, "Attempt not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Security("bearer")
+  @Authenticated()
   async deleteAttempt(@Path() id: string): Promise<void> {
     await this.attemptService.deleteAttempt(id);
     this.setStatus(204);

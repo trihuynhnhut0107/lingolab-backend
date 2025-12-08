@@ -7,10 +7,10 @@ import {
   UploadMediaDTO,
 } from "../dtos/attempt-media.dto";
 import { AttemptMediaService } from "../services/attempt-media.service";
-import { MediaType } from "../entities/AttemptMedia";
+import { MediaType } from "../enums";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
-@Route("/api/attempt-media")
+@Route("/attempt-media")
 @Tags("AttemptMedia")
 export class AttemptMediaController extends Controller {
   private attemptMediaService = new AttemptMediaService();

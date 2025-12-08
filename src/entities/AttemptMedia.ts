@@ -8,11 +8,7 @@ import {
   Index,
 } from "typeorm";
 import { Attempt } from "./Attempt";
-
-export enum MediaType {
-  AUDIO = "audio",
-  VIDEO = "video",
-}
+import { MediaType } from "../enums";
 
 @Entity("attempt_media")
 @Index("idx_attempt_media_attempt", ["attemptId"])

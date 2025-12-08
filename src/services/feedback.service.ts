@@ -12,6 +12,7 @@ import { Attempt } from "../entities/Attempt";
 import { User } from "../entities/User";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { NotFoundException, ConflictException, InternalServerErrorException, BadRequestException } from "../exceptions/HttpException";
 
 export class FeedbackService {
   private feedbackRepository = AppDataSource.getRepository(Feedback);
@@ -23,13 +24,13 @@ export class FeedbackService {
     // Check if attempt exists
     const attempt = await this.attemptRepository.findOne({ where: { id: dto.attemptId } });
     if (!attempt) {
-      throw new Error("Attempt not found");
+      throw new NotFoundException(`Attempt with ID '${dto.attemptId}' not found`);
     }
 
     // Check if author exists
     const author = await this.userRepository.findOne({ where: { id: dto.authorId } });
     if (!author) {
-      throw new Error("Author not found");
+      throw new NotFoundException(`Author user with ID '${dto.authorId}' not found`);
     }
 
     const feedback = this.feedbackRepository.create({
@@ -52,7 +53,7 @@ export class FeedbackService {
       relations: ["author", "attempt"],
     });
     if (!feedback) {
-      throw new Error("Feedback not found");
+      throw new NotFoundException(`Feedback with ID '${id}' not found`);
     }
     return this.mapToDetailDTO(feedback);
   }
@@ -171,13 +172,13 @@ export class FeedbackService {
   async updateFeedback(id: string, dto: UpdateFeedbackDTO): Promise<FeedbackResponseDTO> {
     const feedback = await this.feedbackRepository.findOne({ where: { id } });
     if (!feedback) {
-      throw new Error("Feedback not found");
+      throw new NotFoundException(`Feedback with ID '${id}' not found`);
     }
 
     await this.feedbackRepository.update(id, dto);
     const updated = await this.feedbackRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update feedback");
+      throw new InternalServerErrorException(`Failed to update feedback with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -187,7 +188,7 @@ export class FeedbackService {
   async deleteFeedback(id: string): Promise<boolean> {
     const feedback = await this.feedbackRepository.findOne({ where: { id } });
     if (!feedback) {
-      throw new Error("Feedback not found");
+      throw new NotFoundException(`Feedback with ID '${id}' not found`);
     }
     const result = await this.feedbackRepository.delete(id);
     return (result.affected ?? 0) > 0;

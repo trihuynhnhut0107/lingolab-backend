@@ -6,6 +6,7 @@
  * @example {
  *   "attemptId": "attempt-123",
  *   "fluency": 7,
+ *   "coherence": 7,
  *   "pronunciation": 6.5,
  *   "lexical": 7.5,
  *   "grammar": 7,
@@ -26,6 +27,13 @@ export class CreateScoreDTO {
    * @max 9
    */
   fluency!: number;
+
+  /**
+   * Coherence score
+   * @min 0
+   * @max 9
+   */
+  coherence!: number;
 
   /**
    * Pronunciation score
@@ -69,11 +77,13 @@ export class CreateScoreDTO {
 /**
  * @example {
  *   "fluency": 7.5,
+ *   "coherence": 7.5,
  *   "overallBand": 7.5
  * }
  */
 export class UpdateScoreDTO {
   fluency?: number;
+  coherence?: number;
   pronunciation?: number;
   lexical?: number;
   grammar?: number;
@@ -87,6 +97,7 @@ export class UpdateScoreDTO {
  *   "id": "score-123",
  *   "attemptId": "attempt-123",
  *   "fluency": 7,
+ *   "coherence": 7,
  *   "pronunciation": 6.5,
  *   "lexical": 7.5,
  *   "grammar": 7,
@@ -99,6 +110,7 @@ export class ScoreResponseDTO {
   id!: string;
   attemptId!: string;
   fluency!: number;
+  coherence!: number;
   pronunciation!: number;
   lexical!: number;
   grammar!: number;
@@ -129,6 +141,7 @@ export class ScoreListDTO {
  *   "id": "score-123",
  *   "attemptId": "attempt-123",
  *   "fluency": 7,
+ *   "coherence": 7,
  *   "pronunciation": 6.5,
  *   "lexical": 7.5,
  *   "grammar": 7,

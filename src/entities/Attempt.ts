@@ -15,13 +15,7 @@ import { AttemptMedia } from "./AttemptMedia";
 import { ScoringJob } from "./ScoringJob";
 import { Score } from "./Score";
 import { Feedback } from "./Feedback";
-import { SkillType } from "./Prompt";
-
-export enum AttemptStatus {
-  IN_PROGRESS = "in_progress",
-  SUBMITTED = "submitted",
-  SCORED = "scored",
-}
+import { SkillType, AttemptStatus } from "../enums";
 
 @Entity("attempts")
 @Index("idx_attempts_learner_created", ["learnerId", "createdAt"])
@@ -61,6 +55,9 @@ export class Attempt {
 
   @Column({ type: "timestamp", nullable: true })
   scoredAt?: Date;
+
+  @Column({ type: "text", nullable: true })
+  content?: string; // Transcript or written content to be scored
 
   // Relations
   @ManyToOne(() => User, (user) => user.attempts, {

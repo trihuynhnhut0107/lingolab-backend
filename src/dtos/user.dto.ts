@@ -1,4 +1,4 @@
-import { UserRole, UserStatus, UILanguage } from "../entities/User";
+import { UserRole, UserStatus, UILanguage } from "../enums";
 
 /**
  * User DTOs for API requests and responses

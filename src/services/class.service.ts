@@ -15,6 +15,7 @@ import { Class } from "../entities/Class";
 import { User } from "../entities/User";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { NotFoundException, ConflictException, InternalServerErrorException } from "../exceptions/HttpException";
 
 export class ClassService {
   private classRepository = AppDataSource.getRepository(Class);
@@ -25,14 +26,14 @@ export class ClassService {
     // Check if teacher exists
     const teacher = await this.userRepository.findOne({ where: { id: dto.teacherId } });
     if (!teacher) {
-      throw new Error("Teacher not found");
+      throw new NotFoundException(`Teacher with ID '${dto.teacherId}' not found`);
     }
 
     // Check if code is unique (if provided)
     if (dto.code) {
       const existingClass = await this.classRepository.findOne({ where: { code: dto.code } });
       if (existingClass) {
-        throw new Error("Class code already exists");
+        throw new ConflictException(`Class code '${dto.code}' already exists`);
       }
     }
 
@@ -54,7 +55,7 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!classs) {
-      throw new Error("Class not found");
+      throw new NotFoundException(`Class with ID '${id}' not found`);
     }
     return this.mapToDetailDTO(classs);
   }
@@ -95,7 +96,7 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!classs) {
-      throw new Error("Class not found");
+      throw new NotFoundException(`Class with code '${code}' not found`);
     }
     return this.mapToDetailDTO(classs);
   }
@@ -111,21 +112,21 @@ export class ClassService {
   async updateClass(id: string, dto: UpdateClassDTO): Promise<ClassResponseDTO> {
     const classs = await this.classRepository.findOne({ where: { id } });
     if (!classs) {
-      throw new Error("Class not found");
+      throw new NotFoundException(`Class with ID '${id}' not found`);
     }
 
     // Check if code is being changed and already exists
     if (dto.code && dto.code !== classs.code) {
       const existingClass = await this.classRepository.findOne({ where: { code: dto.code } });
       if (existingClass) {
-        throw new Error("Class code already exists");
+        throw new ConflictException(`Class code '${dto.code}' already exists`);
       }
     }
 
     await this.classRepository.update(id, dto);
     const updated = await this.classRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update class");
+      throw new InternalServerErrorException(`Failed to update class with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -135,7 +136,7 @@ export class ClassService {
   async deleteClass(id: string): Promise<boolean> {
     const classs = await this.classRepository.findOne({ where: { id } });
     if (!classs) {
-      throw new Error("Class not found");
+      throw new NotFoundException(`Class with ID '${id}' not found`);
     }
     const result = await this.classRepository.delete(id);
     return (result.affected ?? 0) > 0;
@@ -145,12 +146,12 @@ export class ClassService {
   async enrollLearner(classId: string, dto: EnrollLearnerDTO): Promise<ClassDetailDTO> {
     const classs = await this.classRepository.findOne({ where: { id: classId } });
     if (!classs) {
-      throw new Error("Class not found");
+      throw new NotFoundException(`Class with ID '${classId}' not found`);
     }
 
     const learner = await this.userRepository.findOne({ where: { id: dto.learnerId } });
     if (!learner) {
-      throw new Error("Learner not found");
+      throw new NotFoundException(`Learner with ID '${dto.learnerId}' not found`);
     }
 
     // Add learner to class using the many-to-many relationship
@@ -172,7 +173,7 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!updated) {
-      throw new Error("Failed to enroll learner");
+      throw new InternalServerErrorException(`Failed to enroll learner in class with ID '${classId}'`);
     }
 
     return this.mapToDetailDTO(updated);
@@ -182,12 +183,12 @@ export class ClassService {
   async enrollByCode(learnerId: string, dto: EnrollByCodeDTO): Promise<ClassDetailDTO> {
     const classs = await this.classRepository.findOne({ where: { code: dto.code } });
     if (!classs) {
-      throw new Error("Class code not found");
+      throw new NotFoundException(`Class with code '${dto.code}' not found`);
     }
 
     const learner = await this.userRepository.findOne({ where: { id: learnerId } });
     if (!learner) {
-      throw new Error("Learner not found");
+      throw new NotFoundException(`Learner with ID '${learnerId}' not found`);
     }
 
     const queryRunner = AppDataSource.createQueryRunner();
@@ -208,7 +209,7 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!updated) {
-      throw new Error("Failed to enroll in class");
+      throw new InternalServerErrorException(`Failed to enroll learner in class with code '${dto.code}'`);
     }
 
     return this.mapToDetailDTO(updated);
@@ -218,12 +219,12 @@ export class ClassService {
   async removeLearner(classId: string, dto: RemoveLearnerDTO): Promise<ClassDetailDTO> {
     const classs = await this.classRepository.findOne({ where: { id: classId } });
     if (!classs) {
-      throw new Error("Class not found");
+      throw new NotFoundException(`Class with ID '${classId}' not found`);
     }
 
     const learner = await this.userRepository.findOne({ where: { id: dto.learnerId } });
     if (!learner) {
-      throw new Error("Learner not found");
+      throw new NotFoundException(`Learner with ID '${dto.learnerId}' not found`);
     }
 
     const queryRunner = AppDataSource.createQueryRunner();
@@ -243,7 +244,7 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!updated) {
-      throw new Error("Failed to remove learner");
+      throw new InternalServerErrorException(`Failed to remove learner from class with ID '${classId}'`);
     }
 
     return this.mapToDetailDTO(updated);

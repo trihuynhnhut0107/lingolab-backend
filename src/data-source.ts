@@ -10,6 +10,8 @@ import { ScoringJob } from "./entities/ScoringJob";
 import { Score } from "./entities/Score";
 import { Feedback } from "./entities/Feedback";
 import { Class } from "./entities/Class";
+import { Assignment } from "./entities/Assignment";
+import { AIRule } from "./entities/AIRule";
 
 dotenv.config();
 
@@ -40,7 +42,7 @@ export const AppDataSource = new DataSource({
   database: DB_NAME || "lingolab_db",
   synchronize: false,
   logging: TYPEORM_LOGGING === "true",
-  entities: [User, LearnerProfile, Prompt, Attempt, AttemptMedia, ScoringJob, Score, Feedback, Class],
+  entities: [User, LearnerProfile, Prompt, Attempt, AttemptMedia, ScoringJob, Score, Feedback, Class, Assignment, AIRule],
   // For migrations: works with both ts-node (src/**) and compiled output (dist/**)
   migrations: [
     __dirname + "/migrations/*.ts",

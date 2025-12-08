@@ -1,4 +1,4 @@
-import { ScoringJobStatus } from "../entities/ScoringJob";
+import { ScoringJobStatus } from "../enums";
 
 /**
  * ScoringJob DTOs

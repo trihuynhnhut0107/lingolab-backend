@@ -1,5 +1,4 @@
-import { SkillType } from "../entities/Prompt";
-import { AttemptStatus } from "../entities/Attempt";
+import { SkillType, AttemptStatus } from "../enums";
 
 /**
  * Attempt DTOs
@@ -40,7 +39,8 @@ export class UpdateAttemptDTO {
 
 /**
  * @example {
- *   "responseText": "This is my written response to the prompt..."
+ *   "responseText": "This is my written response to the prompt...",
+ *   "aiRuleId": "ai-rule-123"
  * }
  */
 export class SubmitAttemptDTO {
@@ -48,6 +48,16 @@ export class SubmitAttemptDTO {
    * Response text for writing attempts
    */
   responseText?: string;
+
+  /**
+   * Content/transcript to be scored (can be from text or speech-to-text)
+   */
+  content?: string;
+
+  /**
+   * Optional AI Rule ID to automatically score the attempt with teacher-defined rules
+   */
+  aiRuleId?: string;
 }
 
 /**
