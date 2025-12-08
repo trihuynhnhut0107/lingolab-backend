@@ -6,9 +6,11 @@ import {
   UserDetailResponseDTO,
   UserListDTO,
 } from "../dtos/user.dto";
-import { User, UserRole, UserStatus } from "../entities/User";
+import { User } from "../entities/User";
+import { UserRole, UserStatus } from "../enums";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { NotFoundException, ConflictException, InternalServerErrorException } from "../exceptions/HttpException";
 
 export class UserService {
   private userRepository = AppDataSource.getRepository(User);
@@ -18,7 +20,7 @@ export class UserService {
     // Check if email already exists
     const existing = await this.userRepository.findOne({ where: { email: dto.email } });
     if (existing) {
-      throw new Error("Email already registered");
+      throw new ConflictException(`Email '${dto.email}' is already registered`);
     }
 
     const user = this.userRepository.create({
@@ -39,7 +41,7 @@ export class UserService {
       relations: ["learnerProfile", "taughtClasses", "enrolledClasses"],
     });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException(`User with ID '${id}' not found`);
     }
     return this.mapToDetailResponseDTO(user);
   }
@@ -48,7 +50,7 @@ export class UserService {
   async getUserByEmail(email: string): Promise<UserResponseDTO> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException(`User with email '${email}' not found`);
     }
     return this.mapToResponseDTO(user);
   }
@@ -100,21 +102,21 @@ export class UserService {
   async updateUser(id: string, dto: UpdateUserDTO): Promise<UserResponseDTO> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException(`User with ID '${id}' not found`);
     }
 
     // Check if email is being changed and already exists
     if (dto.email && dto.email !== user.email) {
       const existing = await this.userRepository.findOne({ where: { email: dto.email } });
       if (existing) {
-        throw new Error("Email already registered");
+        throw new ConflictException(`Email '${dto.email}' is already registered`);
       }
     }
 
     await this.userRepository.update(id, dto);
     const updated = await this.userRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update user");
+      throw new InternalServerErrorException(`Failed to update user with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -124,7 +126,7 @@ export class UserService {
   async lockUserAccount(id: string): Promise<UserResponseDTO> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException(`User with ID '${id}' not found`);
     }
     await this.userRepository.update(id, { status: UserStatus.LOCKED });
     const updated = await this.userRepository.findOne({ where: { id } });
@@ -135,7 +137,7 @@ export class UserService {
   async unlockUserAccount(id: string): Promise<UserResponseDTO> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException(`User with ID '${id}' not found`);
     }
     await this.userRepository.update(id, { status: UserStatus.ACTIVE });
     const updated = await this.userRepository.findOne({ where: { id } });
@@ -146,7 +148,7 @@ export class UserService {
   async deleteUser(id: string): Promise<boolean> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException(`User with ID '${id}' not found`);
     }
     const result = await this.userRepository.delete(id);
     return (result.affected ?? 0) > 0;

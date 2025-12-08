@@ -8,7 +8,7 @@ import {
 import { LearnerProfileService } from "../services/learner-profile.service";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
-@Route("/api/learner-profiles")
+@Route("/learner-profiles")
 @Tags("LearnerProfile")
 export class LearnerProfileController extends Controller {
   private learnerProfileService = new LearnerProfileService();

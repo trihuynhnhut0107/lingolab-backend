@@ -9,6 +9,7 @@ import { LearnerProfile } from "../entities/LearnerProfile";
 import { User } from "../entities/User";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { NotFoundException, ConflictException, InternalServerErrorException, BadRequestException } from "../exceptions/HttpException";
 
 export class LearnerProfileService {
   private learnerProfileRepository = AppDataSource.getRepository(LearnerProfile);
@@ -19,7 +20,7 @@ export class LearnerProfileService {
     // Check if user exists
     const user = await this.userRepository.findOne({ where: { id: dto.userId } });
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundException(`User with ID '${dto.userId}' not found`);
     }
 
     // Check if profile already exists for this user
@@ -27,7 +28,7 @@ export class LearnerProfileService {
       where: { userId: dto.userId }
     });
     if (existingProfile) {
-      throw new Error("Learner profile already exists for this user");
+      throw new ConflictException(`Learner profile already exists for user with ID '${dto.userId}'`);
     }
 
     const profile = this.learnerProfileRepository.create({
@@ -50,7 +51,7 @@ export class LearnerProfileService {
       relations: ["user"],
     });
     if (!profile) {
-      throw new Error("Learner profile not found");
+      throw new NotFoundException(`Learner profile with ID '${id}' not found`);
     }
     return this.mapToDetailDTO(profile);
   }
@@ -62,7 +63,7 @@ export class LearnerProfileService {
       relations: ["user"],
     });
     if (!profile) {
-      throw new Error("Learner profile not found");
+      throw new NotFoundException(`Learner profile for user with ID '${userId}' not found`);
     }
     return this.mapToDetailDTO(profile);
   }
@@ -88,13 +89,13 @@ export class LearnerProfileService {
   ): Promise<LearnerProfileResponseDTO> {
     const profile = await this.learnerProfileRepository.findOne({ where: { id } });
     if (!profile) {
-      throw new Error("Learner profile not found");
+      throw new NotFoundException(`Learner profile with ID '${id}' not found`);
     }
 
     await this.learnerProfileRepository.update(id, dto);
     const updated = await this.learnerProfileRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update learner profile");
+      throw new InternalServerErrorException(`Failed to update learner profile with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -104,7 +105,7 @@ export class LearnerProfileService {
   async deleteLearnerProfile(id: string): Promise<boolean> {
     const profile = await this.learnerProfileRepository.findOne({ where: { id } });
     if (!profile) {
-      throw new Error("Learner profile not found");
+      throw new NotFoundException(`Learner profile with ID '${id}' not found`);
     }
     const result = await this.learnerProfileRepository.delete(id);
     return (result.affected ?? 0) > 0;
@@ -127,7 +128,7 @@ export class LearnerProfileService {
       where: { userId },
     });
     if (!profile) {
-      throw new Error("Learner profile not found");
+      throw new NotFoundException(`Learner profile for user with ID '${userId}' not found`);
     }
     return profile.currentBand || null;
   }

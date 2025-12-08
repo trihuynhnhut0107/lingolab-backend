@@ -16,6 +16,7 @@
     "routesDir": "src",
     "routesFileName": "routes.ts",
     "middleware": "express",
-    "basePath": "/api"
+    "basePath": "/api",
+    "authenticationModule": "./src/authentication.ts"
   }
 }

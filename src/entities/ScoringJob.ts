@@ -8,13 +8,7 @@ import {
   Index,
 } from "typeorm";
 import { Attempt } from "./Attempt";
-
-export enum ScoringJobStatus {
-  QUEUED = "queued",
-  PROCESSING = "processing",
-  COMPLETED = "completed",
-  FAILED = "failed",
-}
+import { ScoringJobStatus } from "../enums";
 
 @Entity("scoring_jobs")
 @Index("idx_scoring_job_attempt", ["attemptId"], { unique: true })

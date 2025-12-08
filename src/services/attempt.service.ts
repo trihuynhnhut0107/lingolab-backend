@@ -8,29 +8,35 @@ import {
   AttemptDetailDTO,
   AttemptFilterDTO,
 } from "../dtos/attempt.dto";
-import { Attempt, AttemptStatus } from "../entities/Attempt";
-import { SkillType, Prompt } from "../entities/Prompt";
+import { Attempt } from "../entities/Attempt";
+import { AttemptStatus, SkillType } from "../enums";
+import { Prompt } from "../entities/Prompt";
 import { User } from "../entities/User";
+import { Score } from "../entities/Score";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { langchainService } from "./langchain.service";
+import { aiRuleService } from "./ai-rule.service";
+import { NotFoundException, InternalServerErrorException, BadRequestException } from "../exceptions/HttpException";
 
 export class AttemptService {
   private attemptRepository = AppDataSource.getRepository(Attempt);
   private userRepository = AppDataSource.getRepository(User);
   private promptRepository = AppDataSource.getRepository(Prompt);
+  private scoreRepository = AppDataSource.getRepository(Score);
 
   // Create attempt
   async createAttempt(dto: CreateAttemptDTO): Promise<AttemptResponseDTO> {
     // Check if learner exists
     const learner = await this.userRepository.findOne({ where: { id: dto.learnerId } });
     if (!learner) {
-      throw new Error("Learner not found");
+      throw new NotFoundException(`Learner with ID '${dto.learnerId}' not found`);
     }
 
     // Check if prompt exists
     const prompt = await this.promptRepository.findOne({ where: { id: dto.promptId } });
     if (!prompt) {
-      throw new Error("Prompt not found");
+      throw new NotFoundException(`Prompt with ID '${dto.promptId}' not found`);
     }
 
     const attempt = this.attemptRepository.create({
@@ -52,7 +58,7 @@ export class AttemptService {
       relations: ["prompt", "media", "score", "feedbacks", "feedbacks.author"],
     });
     if (!attempt) {
-      throw new Error("Attempt not found");
+      throw new NotFoundException(`Attempt with ID '${id}' not found`);
     }
     return this.mapToDetailDTO(attempt);
   }
@@ -167,13 +173,13 @@ export class AttemptService {
   async updateAttempt(id: string, dto: UpdateAttemptDTO): Promise<AttemptResponseDTO> {
     const attempt = await this.attemptRepository.findOne({ where: { id } });
     if (!attempt) {
-      throw new Error("Attempt not found");
+      throw new NotFoundException(`Attempt with ID '${id}' not found`);
     }
 
     await this.attemptRepository.update(id, dto);
     const updated = await this.attemptRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update attempt");
+      throw new InternalServerErrorException(`Failed to update attempt with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -181,23 +187,62 @@ export class AttemptService {
 
   // Submit attempt
   async submitAttempt(id: string, dto: SubmitAttemptDTO): Promise<AttemptResponseDTO> {
-    const attempt = await this.attemptRepository.findOne({ where: { id } });
+    const attempt = await this.attemptRepository.findOne({
+      where: { id },
+      relations: ["prompt"],
+    });
     if (!attempt) {
-      throw new Error("Attempt not found");
+      throw new NotFoundException(`Attempt with ID '${id}' not found`);
     }
 
     if (attempt.status === AttemptStatus.SUBMITTED || attempt.status === AttemptStatus.SCORED) {
-      throw new Error("Attempt already submitted");
+      throw new BadRequestException("Attempt has already been submitted. Cannot modify");
     }
 
+    // Update attempt status to SUBMITTED
     await this.attemptRepository.update(id, {
       status: AttemptStatus.SUBMITTED,
       submittedAt: new Date(),
+      content: dto.content || attempt.content,
     });
+
+    // Try to automatically score if aiRuleId is provided
+    if (dto.aiRuleId) {
+      try {
+        const aiRule = await aiRuleService.getAIRuleById(dto.aiRuleId);
+        const scoreResponse = await langchainService.scoreIELTSSpeaking(
+          dto.content || attempt.content || "",
+          aiRule
+        );
+
+        // Create score record
+        const score = this.scoreRepository.create({
+          attemptId: id,
+          fluency: scoreResponse.fluency,
+          coherence: scoreResponse.coherence,
+          lexical: scoreResponse.lexical,
+          grammar: scoreResponse.grammar,
+          pronunciation: scoreResponse.pronunciation,
+          overallBand: scoreResponse.overallBand,
+          feedback: JSON.stringify(scoreResponse.feedback),
+          detailedFeedback: scoreResponse.feedback,
+        });
+        await this.scoreRepository.save(score);
+
+        // Update attempt status to SCORED
+        await this.attemptRepository.update(id, {
+          status: AttemptStatus.SCORED,
+        });
+      } catch (error: any) {
+        // Log the error but don't fail the submission
+        console.error(`AI scoring failed for attempt ${id}:`, error.message);
+        // Keep the attempt in SUBMITTED status if scoring fails
+      }
+    }
 
     const updated = await this.attemptRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to submit attempt");
+      throw new InternalServerErrorException(`Failed to submit attempt with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -207,7 +252,7 @@ export class AttemptService {
   async deleteAttempt(id: string): Promise<boolean> {
     const attempt = await this.attemptRepository.findOne({ where: { id } });
     if (!attempt) {
-      throw new Error("Attempt not found");
+      throw new NotFoundException(`Attempt with ID '${id}' not found`);
     }
     const result = await this.attemptRepository.delete(id);
     return (result.affected ?? 0) > 0;

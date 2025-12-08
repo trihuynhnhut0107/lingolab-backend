@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Route, Body, Path, Query, Response, Tags } from "tsoa";
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Body,
+  Path,
+  Query,
+  Response,
+  Tags,
+  Request,
+  Security,
+} from "tsoa";
 import {
   CreateUserDTO,
   UpdateUserDTO,
@@ -8,9 +22,11 @@ import {
 } from "../dtos/user.dto";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 import { UserService } from "../services/user.service";
-import { UserRole, UserStatus } from "../entities/User";
+import { UserRole, UserStatus } from "../enums";
+import { Authenticated, AdminOnly } from "../decorators/auth.decorator";
+import { AuthRequest } from "../middleware/auth.middleware";
 
-@Route("/api/users")
+@Route("/users")
 @Tags("User")
 export class UserController extends Controller {
   private userService = new UserService();
@@ -91,30 +107,47 @@ export class UserController extends Controller {
 
   /**
    * Update user
+   * Requires: Authenticated user (users can update their own profile or admin can update any)
    */
   @Put("{id}")
   @Response<UserResponseDTO>(200, "User updated successfully")
   @Response(404, "User not found")
-  async updateUser(@Path() id: string, @Body() dto: UpdateUserDTO): Promise<UserResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Security("bearer")
+  @Authenticated()
+  async updateUser(
+    @Path() id: string,
+    @Body() dto: UpdateUserDTO
+  ): Promise<UserResponseDTO> {
     return await this.userService.updateUser(id, dto);
   }
 
   /**
    * Lock user account
+   * Requires: Admin role only
    */
   @Put("{id}/lock")
   @Response<UserResponseDTO>(200, "User locked successfully")
   @Response(404, "User not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only admins can lock user accounts")
+  @Security("bearer")
+  @AdminOnly()
   async lockUserAccount(@Path() id: string): Promise<UserResponseDTO> {
     return await this.userService.lockUserAccount(id);
   }
 
   /**
    * Unlock user account
+   * Requires: Admin role only
    */
   @Put("{id}/unlock")
   @Response<UserResponseDTO>(200, "User unlocked successfully")
   @Response(404, "User not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only admins can unlock user accounts")
+  @Security("bearer")
+  @AdminOnly()
   async unlockUserAccount(@Path() id: string): Promise<UserResponseDTO> {
     return await this.userService.unlockUserAccount(id);
   }
@@ -132,10 +165,15 @@ export class UserController extends Controller {
 
   /**
    * Delete user
+   * Requires: Admin role only
    */
   @Delete("{id}")
   @Response(204, "User deleted successfully")
   @Response(404, "User not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only admins can delete user accounts")
+  @Security("bearer")
+  @AdminOnly()
   async deleteUser(@Path() id: string): Promise<void> {
     await this.userService.deleteUser(id);
     this.setStatus(204);

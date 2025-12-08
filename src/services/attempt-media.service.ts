@@ -6,10 +6,12 @@ import {
   AttemptMediaListDTO,
   UploadMediaDTO,
 } from "../dtos/attempt-media.dto";
-import { AttemptMedia, MediaType } from "../entities/AttemptMedia";
+import { AttemptMedia } from "../entities/AttemptMedia";
+import { MediaType } from "../enums";
 import { Attempt } from "../entities/Attempt";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { NotFoundException, ConflictException, InternalServerErrorException, BadRequestException } from "../exceptions/HttpException";
 
 export class AttemptMediaService {
   private attemptMediaRepository = AppDataSource.getRepository(AttemptMedia);
@@ -20,13 +22,13 @@ export class AttemptMediaService {
     // Check if attempt exists
     const attempt = await this.attemptRepository.findOne({ where: { id: dto.attemptId } });
     if (!attempt) {
-      throw new Error("Attempt not found");
+      throw new NotFoundException(`Attempt with ID '${dto.attemptId}' not found`);
     }
 
     // Validate file size
     if (dto.fileSize && dto.fileSize > 100 * 1024 * 1024) {
       // 100MB limit
-      throw new Error("File size exceeds 100MB limit");
+      throw new BadRequestException(`File size ${dto.fileSize} bytes exceeds 100MB limit`);
     }
 
     const media = this.attemptMediaRepository.create({
@@ -47,7 +49,7 @@ export class AttemptMediaService {
   async getMediaById(id: string): Promise<AttemptMediaResponseDTO> {
     const media = await this.attemptMediaRepository.findOne({ where: { id } });
     if (!media) {
-      throw new Error("Media not found");
+      throw new NotFoundException(`Media with ID '${id}' not found`);
     }
     return this.mapToResponseDTO(media);
   }
@@ -93,13 +95,13 @@ export class AttemptMediaService {
   async updateMedia(id: string, dto: UpdateAttemptMediaDTO): Promise<AttemptMediaResponseDTO> {
     const media = await this.attemptMediaRepository.findOne({ where: { id } });
     if (!media) {
-      throw new Error("Media not found");
+      throw new NotFoundException(`Media with ID '${id}' not found`);
     }
 
     await this.attemptMediaRepository.update(id, dto);
     const updated = await this.attemptMediaRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new Error("Failed to update media");
+      throw new InternalServerErrorException(`Failed to update media with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -109,7 +111,7 @@ export class AttemptMediaService {
   async deleteMedia(id: string): Promise<boolean> {
     const media = await this.attemptMediaRepository.findOne({ where: { id } });
     if (!media) {
-      throw new Error("Media not found");
+      throw new NotFoundException(`Media with ID '${id}' not found`);
     }
     const result = await this.attemptMediaRepository.delete(id);
     return (result.affected ?? 0) > 0;

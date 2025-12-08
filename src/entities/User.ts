@@ -14,22 +14,8 @@ import { Attempt } from "./Attempt";
 import { Prompt } from "./Prompt";
 import { Feedback } from "./Feedback";
 import { Class } from "./Class";
-
-export enum UserRole {
-  LEARNER = "learner",
-  TEACHER = "teacher",
-  ADMIN = "admin",
-}
-
-export enum UserStatus {
-  ACTIVE = "active",
-  LOCKED = "locked",
-}
-
-export enum UILanguage {
-  VI = "vi",
-  EN = "en",
-}
+import { AIRule } from "./AIRule";
+import { UserRole, UserStatus, UILanguage } from "../enums";
 
 @Entity("users")
 @Index("idx_user_email", ["email"], { unique: true })
@@ -91,4 +77,7 @@ export class User {
 
   @ManyToMany(() => Class, (classs) => classs.learners)
   enrolledClasses?: Class[];
+
+  @OneToMany(() => AIRule, (rule) => rule.teacher)
+  aiRules?: AIRule[];
 }

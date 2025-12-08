@@ -1,4 +1,20 @@
-import { Controller, Get, Post, Put, Delete, Route, Body, Path, Query, Response, Tags } from "tsoa";
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Body,
+  Path,
+  Query,
+  Response,
+  Tags,
+  Request,
+  Security,
+} from "tsoa";
+import { TeacherOnly } from "../decorators/auth.decorator";
+import { AuthRequest } from "../middleware/auth.middleware";
 import {
   CreateScoreDTO,
   UpdateScoreDTO,
@@ -10,16 +26,21 @@ import {
 import { ScoreService } from "../services/score.service";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 
-@Route("/api/scores")
+@Route("/scores")
 @Tags("Score")
 export class ScoreController extends Controller {
   private scoreService = new ScoreService();
 
   /**
    * Create a new score
+   * Requires: Teacher or Admin role
    */
   @Post()
   @Response(201, "Score created successfully")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can create scores")
+  @Security("bearer")
+  @TeacherOnly()
   async createScore(@Body() dto: CreateScoreDTO): Promise<ScoreResponseDTO> {
     return await this.scoreService.createScore(dto);
   }
@@ -40,7 +61,9 @@ export class ScoreController extends Controller {
   @Get("attempt/{attemptId}")
   @Response(200, "Score found")
   @Response(404, "Score not found")
-  async getScoreByAttemptId(@Path() attemptId: string): Promise<ScoreResponseDTO> {
+  async getScoreByAttemptId(
+    @Path() attemptId: string
+  ): Promise<ScoreResponseDTO> {
     return await this.scoreService.getScoreByAttemptId(attemptId);
   }
 
@@ -77,16 +100,29 @@ export class ScoreController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<ScoreListDTO>> {
-    return await this.scoreService.getScoresByBandRange(minBand, maxBand, limit, offset);
+    return await this.scoreService.getScoresByBandRange(
+      minBand,
+      maxBand,
+      limit,
+      offset
+    );
   }
 
   /**
    * Update score
+   * Requires: Teacher or Admin role
    */
   @Put("{id}")
   @Response(200, "Score updated successfully")
   @Response(404, "Score not found")
-  async updateScore(@Path() id: string, @Body() dto: UpdateScoreDTO): Promise<ScoreResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can update scores")
+  @Security("bearer")
+  @TeacherOnly()
+  async updateScore(
+    @Path() id: string,
+    @Body() dto: UpdateScoreDTO
+  ): Promise<ScoreResponseDTO> {
     return await this.scoreService.updateScore(id, dto);
   }
 
@@ -109,10 +145,15 @@ export class ScoreController extends Controller {
 
   /**
    * Delete score
+   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "Score deleted successfully")
   @Response(404, "Score not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can delete scores")
+  @Security("bearer")
+  @TeacherOnly()
   async deleteScore(@Path() id: string): Promise<void> {
     await this.scoreService.deleteScore(id);
     this.setStatus(204);

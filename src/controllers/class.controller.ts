@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Route, Body, Path, Query, Response, Tags } from "tsoa";
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Body,
+  Path,
+  Query,
+  Response,
+  Tags,
+  Request,
+  Security,
+} from "tsoa";
 import {
   CreateClassDTO,
   UpdateClassDTO,
@@ -12,17 +26,24 @@ import {
 } from "../dtos/class.dto";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 import { ClassService } from "../services/class.service";
+import { TeacherOnly, Authenticated } from "../decorators/auth.decorator";
+import { AuthRequest } from "../middleware/auth.middleware";
 
-@Route("/api/classes")
+@Route("/classes")
 @Tags("Class")
 export class ClassController extends Controller {
   private classService = new ClassService();
 
   /**
    * Create a new class
+   * Requires: Teacher or Admin role
    */
   @Post()
   @Response(201, "Class created successfully")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can create classes")
+  @Security("bearer")
+  @TeacherOnly()
   async createClass(@Body() dto: CreateClassDTO): Promise<ClassResponseDTO> {
     return await this.classService.createClass(dto);
   }
@@ -57,7 +78,11 @@ export class ClassController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<ClassListDTO>> {
-    return await this.classService.getClassesByTeacher(teacherId, limit, offset);
+    return await this.classService.getClassesByTeacher(
+      teacherId,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -74,7 +99,9 @@ export class ClassController extends Controller {
    * Get classes with filter
    */
   @Post("filter")
-  async getClassesByFilter(@Body() filter: ClassFilterDTO): Promise<PaginatedResponseDTO<ClassListDTO>> {
+  async getClassesByFilter(
+    @Body() filter: ClassFilterDTO
+  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
     return await this.classService.getClassesByFilter(filter);
   }
 
@@ -91,30 +118,50 @@ export class ClassController extends Controller {
 
   /**
    * Update class
+   * Requires: Teacher or Admin role
    */
   @Put("{id}")
   @Response(200, "Class updated successfully")
   @Response(404, "Class not found")
-  async updateClass(@Path() id: string, @Body() dto: UpdateClassDTO): Promise<ClassResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can update classes")
+  @Security("bearer")
+  @TeacherOnly()
+  async updateClass(
+    @Path() id: string,
+    @Body() dto: UpdateClassDTO
+  ): Promise<ClassResponseDTO> {
     return await this.classService.updateClass(id, dto);
   }
 
   /**
    * Enroll learner by ID
+   * Requires: Teacher or Admin role (teacher manually adds a learner)
    */
   @Post("{id}/enroll")
   @Response(200, "Learner enrolled successfully")
   @Response(404, "Class or learner not found")
-  async enrollLearner(@Path() id: string, @Body() dto: EnrollLearnerDTO): Promise<ClassDetailDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can enroll learners")
+  @Security("bearer")
+  @TeacherOnly()
+  async enrollLearner(
+    @Path() id: string,
+    @Body() dto: EnrollLearnerDTO
+  ): Promise<ClassDetailDTO> {
     return await this.classService.enrollLearner(id, dto);
   }
 
   /**
    * Enroll learner by code
+   * Requires: Authenticated user (learner self-enrolls using class code)
    */
   @Post("enroll-by-code/{learnerId}")
   @Response(200, "Learner enrolled successfully")
   @Response(404, "Class or learner not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Security("bearer")
+  @Authenticated()
   async enrollByCode(
     @Path() learnerId: string,
     @Body() dto: EnrollByCodeDTO
@@ -124,11 +171,19 @@ export class ClassController extends Controller {
 
   /**
    * Remove learner from class
+   * Requires: Teacher or Admin role
    */
   @Post("{id}/remove-learner")
   @Response(200, "Learner removed successfully")
   @Response(404, "Class or learner not found")
-  async removeLearner(@Path() id: string, @Body() dto: RemoveLearnerDTO): Promise<ClassDetailDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can remove learners")
+  @Security("bearer")
+  @TeacherOnly()
+  async removeLearner(
+    @Path() id: string,
+    @Body() dto: RemoveLearnerDTO
+  ): Promise<ClassDetailDTO> {
     return await this.classService.removeLearner(id, dto);
   }
 
@@ -145,17 +200,24 @@ export class ClassController extends Controller {
    * Get class count by teacher
    */
   @Get("teacher/{teacherId}/count")
-  async getClassCountByTeacher(@Path() teacherId: string): Promise<{ count: number }> {
+  async getClassCountByTeacher(
+    @Path() teacherId: string
+  ): Promise<{ count: number }> {
     const count = await this.classService.getClassCountByTeacher(teacherId);
     return { count };
   }
 
   /**
    * Delete class
+   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "Class deleted successfully")
   @Response(404, "Class not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can delete classes")
+  @Security("bearer")
+  @TeacherOnly()
   async deleteClass(@Path() id: string): Promise<void> {
     await this.classService.deleteClass(id);
     this.setStatus(204);

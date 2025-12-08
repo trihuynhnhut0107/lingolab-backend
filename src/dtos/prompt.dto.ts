@@ -1,4 +1,4 @@
-import { SkillType, DifficultyLevel } from "../entities/Prompt";
+import { SkillType, DifficultyLevel } from "../enums";
 
 /**
  * Prompt DTOs

@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Route, Body, Path, Query, Response, Tags } from "tsoa";
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Route,
+  Body,
+  Path,
+  Query,
+  Response,
+  Tags,
+  Request,
+  Security,
+} from "tsoa";
 import {
   CreatePromptDTO,
   UpdatePromptDTO,
@@ -8,25 +22,35 @@ import {
   PromptFilterDTO,
 } from "../dtos/prompt.dto";
 import { PromptService } from "../services/prompt.service";
-import { SkillType, DifficultyLevel } from "../entities/Prompt";
+import { SkillType, DifficultyLevel } from "../enums";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
+import { TeacherOnly } from "../decorators/auth.decorator";
+import { AuthRequest } from "../middleware/auth.middleware";
 
-@Route("/api/prompts")
+@Route("/prompts")
 @Tags("Prompt")
 export class PromptController extends Controller {
   private promptService = new PromptService();
 
   /**
    * Create a new prompt
-   * @param createdBy User ID of the prompt creator (from auth context)
+   * Requires: Teacher or Admin role
+   * User ID is automatically extracted from the authentication token
    */
   @Post()
   @Response(201, "Prompt created successfully")
-  async createPrompt(@Body() dto: CreatePromptDTO, @Query() createdBy: string): Promise<PromptResponseDTO> {
-    if (!createdBy) {
-      throw new Error("Creator ID is required");
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can create prompts")
+  @Security("bearer")
+  @TeacherOnly()
+  async createPrompt(
+    @Body() dto: CreatePromptDTO,
+    @Request() request: AuthRequest
+  ): Promise<PromptResponseDTO> {
+    if (!request.user) {
+      throw new Error("Unauthorized: No user in request");
     }
-    return await this.promptService.createPrompt(dto, createdBy);
+    return await this.promptService.createPrompt(dto, request.user.id);
   }
 
   /**
@@ -59,7 +83,11 @@ export class PromptController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<PromptListDTO>> {
-    return await this.promptService.getPromptsBySkillType(skillType, limit, offset);
+    return await this.promptService.getPromptsBySkillType(
+      skillType,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -71,7 +99,11 @@ export class PromptController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<PromptListDTO>> {
-    return await this.promptService.getPromptsByDifficulty(difficulty, limit, offset);
+    return await this.promptService.getPromptsByDifficulty(
+      difficulty,
+      limit,
+      offset
+    );
   }
 
   /**
@@ -83,14 +115,20 @@ export class PromptController extends Controller {
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<PromptListDTO>> {
-    return await this.promptService.getPromptsByCreator(creatorId, limit, offset);
+    return await this.promptService.getPromptsByCreator(
+      creatorId,
+      limit,
+      offset
+    );
   }
 
   /**
    * Get prompts with filter
    */
   @Post("filter")
-  async getPromptsByFilter(@Body() filter: PromptFilterDTO): Promise<PaginatedResponseDTO<PromptListDTO>> {
+  async getPromptsByFilter(
+    @Body() filter: PromptFilterDTO
+  ): Promise<PaginatedResponseDTO<PromptListDTO>> {
     return await this.promptService.getPromptsByFilter(filter);
   }
 
@@ -107,20 +145,33 @@ export class PromptController extends Controller {
 
   /**
    * Update prompt
+   * Requires: Teacher or Admin role
    */
   @Put("{id}")
   @Response(200, "Prompt updated successfully")
   @Response(404, "Prompt not found")
-  async updatePrompt(@Path() id: string, @Body() dto: UpdatePromptDTO): Promise<PromptResponseDTO> {
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can update prompts")
+  @Security("bearer")
+  @TeacherOnly()
+  async updatePrompt(
+    @Path() id: string,
+    @Body() dto: UpdatePromptDTO
+  ): Promise<PromptResponseDTO> {
     return await this.promptService.updatePrompt(id, dto);
   }
 
   /**
    * Delete prompt
+   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "Prompt deleted successfully")
   @Response(404, "Prompt not found")
+  @Response(401, "Unauthorized - must be logged in")
+  @Response(403, "Forbidden - only teachers and admins can delete prompts")
+  @Security("bearer")
+  @TeacherOnly()
   async deletePrompt(@Path() id: string): Promise<void> {
     await this.promptService.deletePrompt(id);
     this.setStatus(204);

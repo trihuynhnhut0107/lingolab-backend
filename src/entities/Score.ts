@@ -30,6 +30,9 @@ export class Score {
   @Column({ type: "numeric", precision: 3, scale: 1 })
   grammar!: number; // 0-9
 
+  @Column({ type: "numeric", precision: 3, scale: 1 })
+  coherence!: number; // 0-9
+
   @Column({ type: "integer" })
   overallBand!: number; // 5-9
 
