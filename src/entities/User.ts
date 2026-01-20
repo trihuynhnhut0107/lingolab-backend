@@ -18,7 +18,6 @@ import { AIRule } from "./AIRule";
 import { UserRole, UserStatus, UILanguage } from "../enums";
 
 @Entity("users")
-@Index("idx_user_email", ["email"], { unique: true })
 export class User {
   @PrimaryGeneratedColumn("uuid")
   id!: string;

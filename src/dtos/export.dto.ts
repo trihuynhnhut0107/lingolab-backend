@@ -126,8 +126,8 @@ export class LearnerStatsDTO {
  * }
  */
 export class AttemptDetailRowDTO {
-  promptId!: string;
-  promptTitle!: string;
+  assignmentId!: string;
+  assignmentTitle!: string;
   skillType!: "speaking" | "writing";
   attemptDate!: Date;
   submittedDate?: Date;

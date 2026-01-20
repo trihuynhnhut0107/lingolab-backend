@@ -104,16 +104,16 @@ export class AttemptController extends Controller {
   }
 
   /**
-   * Get attempts by prompt
+   * Get attempts by assignment
    */
-  @Get("prompt/{promptId}")
-  async getAttemptsByPrompt(
-    @Path() promptId: string,
+  @Get("assignment/{assignmentId}")
+  async getAttemptsByAssignment(
+    @Path() assignmentId: string,
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
-    return await this.attemptService.getAttemptsByPrompt(
-      promptId,
+    return await this.attemptService.getAttemptsByAssignment(
+      assignmentId,
       limit,
       offset
     );

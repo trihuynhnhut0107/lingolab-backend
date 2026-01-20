@@ -86,6 +86,24 @@ export class ClassController extends Controller {
   }
 
   /**
+   * Get classes by learner (classes the learner is enrolled in)
+   */
+  @Get("learner/{learnerId}")
+  @Response(200, "Classes found")
+  @Response(404, "Learner not found")
+  async getClassesByLearner(
+    @Path() learnerId: string,
+    @Query() limit: number = 10,
+    @Query() offset: number = 0
+  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
+    return await this.classService.getClassesByLearner(
+      learnerId,
+      limit,
+      offset
+    );
+  }
+
+  /**
    * Get class by code
    */
   @Get("code/{code}")
