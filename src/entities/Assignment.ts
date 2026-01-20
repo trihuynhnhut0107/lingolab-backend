@@ -5,17 +5,17 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   Index,
   JoinColumn,
 } from "typeorm";
 import { Class } from "./Class";
 import { Prompt } from "./Prompt";
+import { AIRule } from "./AIRule";
+import { Attempt } from "./Attempt";
 import { AssignmentStatus } from "../enums";
 
 @Entity("assignments")
-@Index("idx_assignment_class", ["classId"])
-@Index("idx_assignment_prompt", ["promptId"])
-@Index("idx_assignment_status", ["status"])
 export class Assignment {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -57,6 +57,12 @@ export class Assignment {
   @Column({ type: "timestamp", nullable: true })
   lateDeadline?: Date;
 
+  @Column({ type: "uuid", nullable: true })
+  aiRuleId?: string; // Optional AI Rule for automatic scoring
+
+  @Column({ type: "boolean", default: false })
+  enableAIScoring!: boolean; // Enable/disable automatic AI scoring
+
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 
@@ -67,12 +73,22 @@ export class Assignment {
   @ManyToOne(() => Class, (classs) => classs.assignments, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "class_id" })
+  @JoinColumn({ name: "classId" })
   class?: Class;
 
   @ManyToOne(() => Prompt, (prompt) => prompt.assignments, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "prompt_id" })
+  @JoinColumn({ name: "promptId" })
   prompt?: Prompt;
+
+  @ManyToOne(() => AIRule, {
+    onDelete: "SET NULL",
+    nullable: true,
+  })
+  @JoinColumn({ name: "aiRuleId" })
+  aiRule?: AIRule;
+
+  @OneToMany(() => Attempt, (attempt) => attempt.assignment)
+  attempts?: Attempt[];
 }

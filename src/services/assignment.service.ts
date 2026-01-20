@@ -14,17 +14,22 @@ import {
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 import { HttpException } from "../exceptions/HttpException";
 import { Attempt } from "../entities/Attempt";
+import { User } from "../entities/User";
 
 export class AssignmentService {
   private assignmentRepository: Repository<Assignment>;
   private attemptRepository: Repository<Attempt>;
+  private userRepository: Repository<User>;
 
   constructor() {
     this.assignmentRepository = AppDataSource.getRepository(Assignment);
     this.attemptRepository = AppDataSource.getRepository(Attempt);
+    this.userRepository = AppDataSource.getRepository(User);
   }
 
-  async createAssignment(dto: CreateAssignmentDTO): Promise<AssignmentResponseDTO> {
+  async createAssignment(
+    dto: CreateAssignmentDTO,
+  ): Promise<AssignmentResponseDTO> {
     const assignment = this.assignmentRepository.create({
       classId: dto.classId,
       promptId: dto.promptId,
@@ -34,6 +39,8 @@ export class AssignmentService {
       status: dto.status || AssignmentStatus.DRAFT,
       allowLateSubmission: dto.allowLateSubmission || false,
       lateDeadline: dto.lateDeadline,
+      aiRuleId: dto.aiRuleId,
+      enableAIScoring: dto.enableAIScoring || false,
     });
 
     const savedAssignment = await this.assignmentRepository.save(assignment);
@@ -43,7 +50,7 @@ export class AssignmentService {
   async getAssignmentById(id: string): Promise<AssignmentDetailDTO> {
     const assignment = await this.assignmentRepository.findOne({
       where: { id },
-      relations: ["class", "prompt"],
+      relations: ["class", "prompt", "aiRule"],
     });
 
     if (!assignment) {
@@ -53,7 +60,10 @@ export class AssignmentService {
     return this.mapToDetailDTO(assignment);
   }
 
-  async getAllAssignments(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+  async getAllAssignments(
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
     const [data, total] = await this.assignmentRepository.findAndCount({
       skip: offset,
       take: limit,
@@ -73,7 +83,7 @@ export class AssignmentService {
   async getAssignmentsByClass(
     classId: string,
     limit: number = 10,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
     const [data, total] = await this.assignmentRepository.findAndCount({
       where: { classId },
@@ -95,7 +105,7 @@ export class AssignmentService {
   async getAssignmentsByStatus(
     status: AssignmentStatus,
     limit: number = 10,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
     const [data, total] = await this.assignmentRepository.findAndCount({
       where: { status },
@@ -114,7 +124,57 @@ export class AssignmentService {
     };
   }
 
-  async getAssignmentsByFilter(filter: AssignmentFilterDTO): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+  // Get assignments by learner (assignments from classes the learner is enrolled in)
+  async getAssignmentsByLearner(
+    learnerId: string,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    // Check if learner exists
+    const learner = await this.userRepository.findOne({
+      where: { id: learnerId },
+      relations: ["enrolledClasses"],
+    });
+
+    if (!learner) {
+      throw new HttpException("Learner not found", 404);
+    }
+
+    // Get class IDs the learner is enrolled in
+    const classIds = learner.enrolledClasses?.map((c) => c.id) || [];
+
+    if (classIds.length === 0) {
+      return {
+        data: [],
+        pagination: {
+          limit,
+          offset,
+          total: 0,
+        },
+      };
+    }
+
+    // Get assignments from those classes
+    const [data, total] = await this.assignmentRepository.findAndCount({
+      where: { classId: In(classIds) },
+      skip: offset,
+      take: limit,
+      order: { deadline: "ASC" },
+    });
+
+    return {
+      data: data.map((a) => this.mapToListDTO(a)),
+      pagination: {
+        limit,
+        offset,
+        total,
+      },
+    };
+  }
+
+  async getAssignmentsByFilter(
+    filter: AssignmentFilterDTO,
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
     const query = this.assignmentRepository.createQueryBuilder("a");
 
     if (filter.classId) {
@@ -149,7 +209,10 @@ export class AssignmentService {
     };
   }
 
-  async updateAssignment(id: string, dto: UpdateAssignmentDTO): Promise<AssignmentResponseDTO> {
+  async updateAssignment(
+    id: string,
+    dto: UpdateAssignmentDTO,
+  ): Promise<AssignmentResponseDTO> {
     const assignment = await this.assignmentRepository.findOne({
       where: { id },
     });
@@ -164,9 +227,13 @@ export class AssignmentService {
     return this.mapToResponseDTO(updated);
   }
 
-  async updateAssignmentStatus(id: string, status: AssignmentStatus): Promise<AssignmentResponseDTO> {
+  async updateAssignmentStatus(
+    id: string,
+    status: AssignmentStatus,
+  ): Promise<AssignmentResponseDTO> {
     const assignment = await this.assignmentRepository.findOne({
       where: { id },
+      relations: ["class", "class.learners"],
     });
 
     if (!assignment) {
@@ -174,12 +241,50 @@ export class AssignmentService {
     }
 
     assignment.status = status;
+
+    // Sync totalEnrolled when assignment becomes active
+    if (status === AssignmentStatus.ACTIVE) {
+      assignment.totalEnrolled = assignment.class?.learners?.length || 0;
+    }
+
     const updated = await this.assignmentRepository.save(assignment);
 
     return this.mapToResponseDTO(updated);
   }
 
-  async getStudentSubmissions(assignmentId: string): Promise<AssignmentStudentSubmissionDTO[]> {
+  async syncEnrollmentCount(assignmentId: string): Promise<void> {
+    const assignment = await this.assignmentRepository.findOne({
+      where: { id: assignmentId },
+      relations: ["class", "class.learners"],
+    });
+
+    if (!assignment) {
+      throw new HttpException("Assignment not found", 404);
+    }
+
+    assignment.totalEnrolled = assignment.class?.learners?.length || 0;
+    await this.assignmentRepository.save(assignment);
+  }
+
+  async syncAllActiveAssignmentsForClass(classId: string): Promise<void> {
+    const assignments = await this.assignmentRepository.find({
+      where: {
+        classId,
+        status: AssignmentStatus.ACTIVE,
+      },
+      relations: ["class", "class.learners"],
+    });
+
+    for (const assignment of assignments) {
+      assignment.totalEnrolled = assignment.class?.learners?.length || 0;
+    }
+
+    await this.assignmentRepository.save(assignments);
+  }
+
+  async getStudentSubmissions(
+    assignmentId: string,
+  ): Promise<AssignmentStudentSubmissionDTO[]> {
     const assignment = await this.assignmentRepository.findOne({
       where: { id: assignmentId },
       relations: ["class"],
@@ -191,7 +296,7 @@ export class AssignmentService {
 
     // Get all attempts for this assignment
     const attempts = await this.attemptRepository.find({
-      where: { promptId: assignment.promptId },
+      where: { assignmentId: assignment.id },
       relations: ["learner", "score"],
     });
 
@@ -233,6 +338,8 @@ export class AssignmentService {
       totalScored: assignment.totalScored,
       allowLateSubmission: assignment.allowLateSubmission,
       lateDeadline: assignment.lateDeadline,
+      aiRuleId: assignment.aiRuleId,
+      enableAIScoring: assignment.enableAIScoring,
       createdAt: assignment.createdAt,
       updatedAt: assignment.updatedAt,
     };
@@ -252,6 +359,8 @@ export class AssignmentService {
       totalScored: assignment.totalScored,
       allowLateSubmission: assignment.allowLateSubmission,
       lateDeadline: assignment.lateDeadline,
+      aiRuleId: assignment.aiRuleId,
+      enableAIScoring: assignment.enableAIScoring,
       createdAt: assignment.createdAt,
       updatedAt: assignment.updatedAt,
       class: assignment.class
@@ -265,6 +374,13 @@ export class AssignmentService {
             id: assignment.prompt.id,
             title: assignment.prompt.content.substring(0, 100),
             skillType: assignment.prompt.skillType,
+          }
+        : undefined,
+      aiRule: assignment.aiRule
+        ? {
+            id: assignment.aiRule.id,
+            name: assignment.aiRule.name,
+            strictness: assignment.aiRule.strictness,
           }
         : undefined,
     };

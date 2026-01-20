@@ -108,6 +108,24 @@ export class AssignmentController extends Controller {
   }
 
   /**
+   * Get assignments by learner (from classes the learner is enrolled in)
+   */
+  @Get("learner/{learnerId}")
+  @Response(200, "Assignments found")
+  @Response(404, "Learner not found")
+  async getAssignmentsByLearner(
+    @Path() learnerId: string,
+    @Query() limit: number = 10,
+    @Query() offset: number = 0
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    return await assignmentService.getAssignmentsByLearner(
+      learnerId,
+      limit,
+      offset
+    );
+  }
+
+  /**
    * Get assignment by ID
    */
   @Get("{id}")

@@ -9,7 +9,6 @@ import {
 import { User } from "./User";
 
 @Entity("learner_profiles")
-@Index("idx_learner_profile_user", ["userId"], { unique: true })
 export class LearnerProfile {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -39,6 +38,6 @@ export class LearnerProfile {
   @OneToOne(() => User, (user) => user.learnerProfile, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "user_id" })
+  @JoinColumn({ name: "userId" })
   user!: User;
 }

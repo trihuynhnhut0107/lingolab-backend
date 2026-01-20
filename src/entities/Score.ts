@@ -10,7 +10,6 @@ import {
 import { Attempt } from "./Attempt";
 
 @Entity("scores")
-@Index("idx_score_attempt", ["attemptId"], { unique: true })
 export class Score {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -18,23 +17,15 @@ export class Score {
   @Column({ type: "uuid", unique: true })
   attemptId!: string;
 
-  @Column({ type: "numeric", precision: 3, scale: 1 })
-  fluency!: number; // 0-9
+  @Column({ type: "jsonb" })
+  scoreMetadata!: {
+    // For speaking: fluency, lexical, grammar, pronunciation
+    // For writing: task_achievement, coherence_cohesion, lexical, grammatical
+    [key: string]: number;
+  };
 
   @Column({ type: "numeric", precision: 3, scale: 1 })
-  pronunciation!: number; // 0-9
-
-  @Column({ type: "numeric", precision: 3, scale: 1 })
-  lexical!: number; // 0-9
-
-  @Column({ type: "numeric", precision: 3, scale: 1 })
-  grammar!: number; // 0-9
-
-  @Column({ type: "numeric", precision: 3, scale: 1 })
-  coherence!: number; // 0-9
-
-  @Column({ type: "integer" })
-  overallBand!: number; // 5-9
+  overallBand!: number; // 5.0-9.0 with 0.5 increments
 
   @Column({ type: "text" })
   feedback!: string;
@@ -49,6 +40,6 @@ export class Score {
   @OneToOne(() => Attempt, (attempt) => attempt.score, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "attempt_id" })
+  @JoinColumn({ name: "attemptId" })
   attempt!: Attempt;
 }

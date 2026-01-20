@@ -6,6 +6,7 @@ import { config } from "dotenv";
 import { initializeDatabase } from "./config/database";
 import { RegisterRoutes } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { queueService } from "./services/queue.service";
 
 // Load environment variables
 config();
@@ -65,6 +66,10 @@ const startServer = async (): Promise<void> => {
     // Initialize database connection
     await initializeDatabase();
 
+    // Initialize queue service with worker
+    await queueService.initialize();
+    console.log("📮 Queue service initialized with scoring worker");
+
     // Start Express server
     app.listen(PORT, () => {
       console.log(`🚀 LingoLab Backend API is running on port ${PORT}`);
@@ -83,6 +88,17 @@ process.on("unhandledRejection", (reason: any) => {
   console.error("Unhandled Rejection:", reason);
   process.exit(1);
 });
+
+// Graceful shutdown
+const shutdown = async () => {
+  console.log("\n🛑 Shutting down gracefully...");
+  await queueService.close();
+  console.log("✅ Shutdown complete");
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 // Start the application
 startServer();

@@ -35,7 +35,9 @@ export class ExportService {
   /**
    * Generate class progress report data
    */
-  async generateClassProgressReport(classId: string): Promise<ClassProgressExportDTO> {
+  async generateClassProgressReport(
+    classId: string,
+  ): Promise<ClassProgressExportDTO> {
     const classs = await this.classRepository.findOne({
       where: { id: classId },
       relations: ["teacher", "learners"],
@@ -54,17 +56,26 @@ export class ExportService {
         relations: ["score"],
       });
 
-      const submittedAttempts = attempts.filter((a) => a.status === AttemptStatus.SUBMITTED).length;
-      const scoredAttempts = attempts.filter((a) => a.status === AttemptStatus.SCORED).length;
+      const submittedAttempts = attempts.filter(
+        (a) => a.status === AttemptStatus.SUBMITTED,
+      ).length;
+      const scoredAttempts = attempts.filter(
+        (a) => a.status === AttemptStatus.SCORED,
+      ).length;
 
       const scores = attempts
         .filter((a) => a.score)
         .map((a) => a.score!.overallBand)
         .filter((s) => s !== undefined);
 
-      const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : undefined;
+      const averageScore =
+        scores.length > 0
+          ? scores.reduce((a, b) => a + b, 0) / scores.length
+          : undefined;
 
-      const speakingAttempts = attempts.filter((a) => a.skillType === "speaking");
+      const speakingAttempts = attempts.filter(
+        (a) => a.skillType === "speaking",
+      );
       const writingAttempts = attempts.filter((a) => a.skillType === "writing");
 
       const speakingScores = speakingAttempts
@@ -76,10 +87,18 @@ export class ExportService {
         .map((a) => a.score!.overallBand)
         .filter((s) => s !== undefined);
 
-      const speakingScore = speakingScores.length > 0 ? speakingScores.reduce((a, b) => a + b, 0) / speakingScores.length : undefined;
-      const writingScore = writingScores.length > 0 ? writingScores.reduce((a, b) => a + b, 0) / writingScores.length : undefined;
+      const speakingScore =
+        speakingScores.length > 0
+          ? speakingScores.reduce((a, b) => a + b, 0) / speakingScores.length
+          : undefined;
+      const writingScore =
+        writingScores.length > 0
+          ? writingScores.reduce((a, b) => a + b, 0) / writingScores.length
+          : undefined;
 
-      const lastAttempt = attempts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+      const lastAttempt = attempts.sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+      )[0];
 
       rows.push({
         learnerName: learner.email.split("@")[0],
@@ -91,7 +110,12 @@ export class ExportService {
         speakingScore,
         writingScore,
         lastAttemptDate: lastAttempt?.submittedAt,
-        status: scoredAttempts > 0 ? "completed" : submittedAttempts > 0 ? "in_progress" : "not_started",
+        status:
+          scoredAttempts > 0
+            ? "completed"
+            : submittedAttempts > 0
+              ? "in_progress"
+              : "not_started",
       });
     }
 
@@ -108,7 +132,9 @@ export class ExportService {
   /**
    * Generate learner report data
    */
-  async generateLearnerReport(learnerId: string): Promise<LearnerReportExportDTO> {
+  async generateLearnerReport(
+    learnerId: string,
+  ): Promise<LearnerReportExportDTO> {
     const learner = await this.userRepository.findOne({
       where: { id: learnerId },
       relations: ["enrolledClasses", "enrolledClasses.teacher"],
@@ -121,12 +147,16 @@ export class ExportService {
     const classes = learner.enrolledClasses || [];
     const attempts = await this.attemptRepository.find({
       where: { learnerId },
-      relations: ["prompt", "score"],
+      relations: ["assignment", "score"],
     });
 
     // Calculate overall stats
-    const submittedAttempts = attempts.filter((a) => a.status === AttemptStatus.SUBMITTED).length;
-    const scoredAttempts = attempts.filter((a) => a.status === AttemptStatus.SCORED).length;
+    const submittedAttempts = attempts.filter(
+      (a) => a.status === AttemptStatus.SUBMITTED,
+    ).length;
+    const scoredAttempts = attempts.filter(
+      (a) => a.status === AttemptStatus.SCORED,
+    ).length;
 
     const scores = attempts
       .filter((a) => a.score)
@@ -149,27 +179,38 @@ export class ExportService {
       totalAttempts: attempts.length,
       submittedAttempts,
       scoredAttempts,
-      averageSpeakingScore: speakingScores.length > 0 ? speakingScores.reduce((a, b) => a + b, 0) / speakingScores.length : undefined,
-      averageWritingScore: writingScores.length > 0 ? writingScores.reduce((a, b) => a + b, 0) / writingScores.length : undefined,
-      overallAverageBand: scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : undefined,
+      averageSpeakingScore:
+        speakingScores.length > 0
+          ? speakingScores.reduce((a, b) => a + b, 0) / speakingScores.length
+          : undefined,
+      averageWritingScore:
+        writingScores.length > 0
+          ? writingScores.reduce((a, b) => a + b, 0) / writingScores.length
+          : undefined,
+      overallAverageBand:
+        scores.length > 0
+          ? scores.reduce((a, b) => a + b, 0) / scores.length
+          : undefined,
     };
 
     // Build attempt details
     const attemptDetails: AttemptDetailRowDTO[] = attempts
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .map((attempt) => ({
-        promptId: attempt.promptId,
-        promptTitle: attempt.prompt?.content.substring(0, 100) || "",
+        assignmentId: attempt.assignmentId,
+        assignmentTitle: attempt.assignment?.title || "",
         skillType: attempt.skillType as "speaking" | "writing",
         attemptDate: attempt.createdAt,
         submittedDate: attempt.submittedAt,
         status: attempt.status as "in_progress" | "submitted" | "scored",
         overallBand: attempt.score?.overallBand,
-        fluency: attempt.score?.fluency,
-        coherence: attempt.score?.coherence,
-        lexical: attempt.score?.lexical,
-        grammar: attempt.score?.grammar,
-        pronunciation: attempt.score?.pronunciation,
+        fluency: attempt.score?.scoreMetadata?.fluency,
+        coherence: attempt.score?.scoreMetadata?.coherence_cohesion,
+        lexical: attempt.score?.scoreMetadata?.lexical,
+        grammar:
+          attempt.score?.scoreMetadata?.grammar ||
+          attempt.score?.scoreMetadata?.grammatical,
+        pronunciation: attempt.score?.scoreMetadata?.pronunciation,
       }));
 
     return {
@@ -240,7 +281,7 @@ export class ExportService {
     const data = await this.generateLearnerReport(learnerId);
 
     const headers = [
-      "Prompt",
+      "Assignment",
       "Skill Type",
       "Attempt Date",
       "Submitted Date",
@@ -254,7 +295,7 @@ export class ExportService {
     ];
 
     const rows = data.attemptDetails.map((detail) => [
-      detail.promptTitle,
+      detail.assignmentTitle,
       detail.skillType,
       detail.attemptDate.toISOString().split("T")[0],
       detail.submittedDate?.toISOString().split("T")[0] || "",

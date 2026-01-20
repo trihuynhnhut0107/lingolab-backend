@@ -9,40 +9,88 @@ import {
   AttemptFilterDTO,
 } from "../dtos/attempt.dto";
 import { Attempt } from "../entities/Attempt";
-import { AttemptStatus, SkillType } from "../enums";
+import { AttemptStatus, SkillType, ScoringJobStatus } from "../enums";
 import { Prompt } from "../entities/Prompt";
 import { User } from "../entities/User";
 import { Score } from "../entities/Score";
+import { Assignment } from "../entities/Assignment";
+import { ScoringJob } from "../entities/ScoringJob";
+import { Class } from "../entities/Class";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
-import { langchainService } from "./langchain.service";
-import { aiRuleService } from "./ai-rule.service";
-import { NotFoundException, InternalServerErrorException, BadRequestException } from "../exceptions/HttpException";
+import { queueService } from "./queue.service";
+import {
+  NotFoundException,
+  InternalServerErrorException,
+  BadRequestException,
+  ForbiddenException,
+} from "../exceptions/HttpException";
 
 export class AttemptService {
   private attemptRepository = AppDataSource.getRepository(Attempt);
   private userRepository = AppDataSource.getRepository(User);
   private promptRepository = AppDataSource.getRepository(Prompt);
   private scoreRepository = AppDataSource.getRepository(Score);
+  private assignmentRepository = AppDataSource.getRepository(Assignment);
+  private scoringJobRepository = AppDataSource.getRepository(ScoringJob);
+  private classRepository = AppDataSource.getRepository(Class);
 
   // Create attempt
   async createAttempt(dto: CreateAttemptDTO): Promise<AttemptResponseDTO> {
     // Check if learner exists
-    const learner = await this.userRepository.findOne({ where: { id: dto.learnerId } });
+    const learner = await this.userRepository.findOne({
+      where: { id: dto.learnerId },
+    });
     if (!learner) {
-      throw new NotFoundException(`Learner with ID '${dto.learnerId}' not found`);
+      throw new NotFoundException(
+        `Learner with ID '${dto.learnerId}' not found`,
+      );
     }
 
-    // Check if prompt exists
-    const prompt = await this.promptRepository.findOne({ where: { id: dto.promptId } });
-    if (!prompt) {
-      throw new NotFoundException(`Prompt with ID '${dto.promptId}' not found`);
+    // Check if assignment exists and get its details
+    const assignment = await this.assignmentRepository.findOne({
+      where: { id: dto.assignmentId },
+      relations: ["prompt", "class"],
+    });
+    if (!assignment) {
+      throw new NotFoundException(
+        `Assignment with ID '${dto.assignmentId}' not found`,
+      );
+    }
+
+    // Validate learner is enrolled in the assignment's class
+    const classEntity = await this.classRepository.findOne({
+      where: { id: assignment.classId },
+      relations: ["learners"],
+    });
+    if (!classEntity) {
+      throw new NotFoundException(
+        `Class with ID '${assignment.classId}' not found`,
+      );
+    }
+
+    const isEnrolled = classEntity.learners?.some(
+      (l) => l.id === dto.learnerId,
+    );
+    if (!isEnrolled) {
+      throw new ForbiddenException(
+        `Learner with ID '${dto.learnerId}' is not enrolled in the class for this assignment`,
+      );
+    }
+
+    // Derive skillType from the assignment's prompt
+    const skillType = assignment.prompt?.skillType;
+    console.log("Assignment:::", assignment);
+    if (!skillType) {
+      throw new BadRequestException(
+        `Assignment's prompt does not have a skill type defined`,
+      );
     }
 
     const attempt = this.attemptRepository.create({
       learnerId: dto.learnerId,
-      promptId: dto.promptId,
-      skillType: dto.skillType,
+      assignmentId: dto.assignmentId,
+      skillType,
       status: AttemptStatus.IN_PROGRESS,
       startedAt: new Date(),
     });
@@ -55,7 +103,14 @@ export class AttemptService {
   async getAttemptById(id: string): Promise<AttemptDetailDTO> {
     const attempt = await this.attemptRepository.findOne({
       where: { id },
-      relations: ["prompt", "media", "score", "feedbacks", "feedbacks.author"],
+      relations: [
+        "assignment",
+        "assignment.prompt",
+        "media",
+        "score",
+        "feedbacks",
+        "feedbacks.author",
+      ],
     });
     if (!attempt) {
       throw new NotFoundException(`Attempt with ID '${id}' not found`);
@@ -64,7 +119,10 @@ export class AttemptService {
   }
 
   // Get all attempts
-  async getAllAttempts(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
+  async getAllAttempts(
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       take: limit,
       skip: offset,
@@ -73,12 +131,16 @@ export class AttemptService {
       attempts.map((a) => this.mapToListDTO(a)),
       total,
       limit,
-      offset
+      offset,
     );
   }
 
   // Get attempts by learner
-  async getAttemptsByLearner(learnerId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
+  async getAttemptsByLearner(
+    learnerId: string,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { learnerId },
       take: limit,
@@ -88,7 +150,7 @@ export class AttemptService {
       attempts.map((a) => this.mapToListDTO(a)),
       total,
       limit,
-      offset
+      offset,
     );
   }
 
@@ -97,7 +159,7 @@ export class AttemptService {
     learnerId: string,
     status: AttemptStatus,
     limit: number = 10,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { learnerId, status },
@@ -108,14 +170,18 @@ export class AttemptService {
       attempts.map((a) => this.mapToListDTO(a)),
       total,
       limit,
-      offset
+      offset,
     );
   }
 
-  // Get attempts by prompt
-  async getAttemptsByPrompt(promptId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
+  // Get attempts by assignment
+  async getAttemptsByAssignment(
+    assignmentId: string,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
-      where: { promptId },
+      where: { assignmentId },
       take: limit,
       skip: offset,
     });
@@ -123,12 +189,16 @@ export class AttemptService {
       attempts.map((a) => this.mapToListDTO(a)),
       total,
       limit,
-      offset
+      offset,
     );
   }
 
   // Get attempts by status
-  async getAttemptsByStatus(status: AttemptStatus, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
+  async getAttemptsByStatus(
+    status: AttemptStatus,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { status },
       take: limit,
@@ -138,12 +208,16 @@ export class AttemptService {
       attempts.map((a) => this.mapToListDTO(a)),
       total,
       limit,
-      offset
+      offset,
     );
   }
 
   // Get attempts by skill type
-  async getAttemptsBySkillType(skillType: SkillType, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AttemptListDTO>> {
+  async getAttemptsBySkillType(
+    skillType: SkillType,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: { skillType },
       take: limit,
@@ -153,24 +227,35 @@ export class AttemptService {
       attempts.map((a) => this.mapToListDTO(a)),
       total,
       limit,
-      offset
+      offset,
     );
   }
 
   // Get attempts with filter
-  async getAttemptsByFilter(learnerId: string, filter: AttemptFilterDTO): Promise<PaginatedResponseDTO<AttemptListDTO>> {
+  async getAttemptsByFilter(
+    learnerId: string,
+    filter: AttemptFilterDTO,
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
     const limit = filter.limit || 10;
     const offset = filter.offset || 0;
 
     if (filter.status) {
-      return this.getAttemptsByLearnerAndStatus(learnerId, filter.status, limit, offset);
+      return this.getAttemptsByLearnerAndStatus(
+        learnerId,
+        filter.status,
+        limit,
+        offset,
+      );
     }
 
     return this.getAttemptsByLearner(learnerId, limit, offset);
   }
 
   // Update attempt
-  async updateAttempt(id: string, dto: UpdateAttemptDTO): Promise<AttemptResponseDTO> {
+  async updateAttempt(
+    id: string,
+    dto: UpdateAttemptDTO,
+  ): Promise<AttemptResponseDTO> {
     const attempt = await this.attemptRepository.findOne({ where: { id } });
     if (!attempt) {
       throw new NotFoundException(`Attempt with ID '${id}' not found`);
@@ -179,24 +264,34 @@ export class AttemptService {
     await this.attemptRepository.update(id, dto);
     const updated = await this.attemptRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new InternalServerErrorException(`Failed to update attempt with ID '${id}'`);
+      throw new InternalServerErrorException(
+        `Failed to update attempt with ID '${id}'`,
+      );
     }
 
     return this.mapToResponseDTO(updated);
   }
 
   // Submit attempt
-  async submitAttempt(id: string, dto: SubmitAttemptDTO): Promise<AttemptResponseDTO> {
+  async submitAttempt(
+    id: string,
+    dto: SubmitAttemptDTO,
+  ): Promise<AttemptResponseDTO> {
     const attempt = await this.attemptRepository.findOne({
       where: { id },
-      relations: ["prompt"],
+      relations: ["assignment", "assignment.prompt"],
     });
     if (!attempt) {
       throw new NotFoundException(`Attempt with ID '${id}' not found`);
     }
 
-    if (attempt.status === AttemptStatus.SUBMITTED || attempt.status === AttemptStatus.SCORED) {
-      throw new BadRequestException("Attempt has already been submitted. Cannot modify");
+    if (
+      attempt.status === AttemptStatus.SUBMITTED ||
+      attempt.status === AttemptStatus.SCORED
+    ) {
+      throw new BadRequestException(
+        "Attempt has already been submitted. Cannot modify",
+      );
     }
 
     // Update attempt status to SUBMITTED
@@ -206,43 +301,51 @@ export class AttemptService {
       content: dto.content || attempt.content,
     });
 
-    // Try to automatically score if aiRuleId is provided
-    if (dto.aiRuleId) {
+    // Use AI Rule from the assignment (students cannot override this)
+    const aiRuleId = attempt.assignment?.aiRuleId;
+    const enableAIScoring = attempt.assignment?.enableAIScoring ?? false;
+
+    // Queue scoring job if assignment has AI rule configured and AI scoring is enabled
+    if (aiRuleId && enableAIScoring) {
       try {
-        const aiRule = await aiRuleService.getAIRuleById(dto.aiRuleId);
-        const scoreResponse = await langchainService.scoreIELTSSpeaking(
-          dto.content || attempt.content || "",
-          aiRule
-        );
+        const transcript = dto.content || attempt.content || "";
 
-        // Create score record
-        const score = this.scoreRepository.create({
+        // Get the Prompt content (AI scoring instructions) from the assignment
+        const promptContent = attempt.assignment?.prompt?.content;
+
+        // Create a scoring job record in the database
+        const scoringJob = this.scoringJobRepository.create({
           attemptId: id,
-          fluency: scoreResponse.fluency,
-          coherence: scoreResponse.coherence,
-          lexical: scoreResponse.lexical,
-          grammar: scoreResponse.grammar,
-          pronunciation: scoreResponse.pronunciation,
-          overallBand: scoreResponse.overallBand,
-          feedback: JSON.stringify(scoreResponse.feedback),
-          detailedFeedback: scoreResponse.feedback,
+          status: ScoringJobStatus.QUEUED,
+          retryCount: 0,
         });
-        await this.scoreRepository.save(score);
+        await this.scoringJobRepository.save(scoringJob);
 
-        // Update attempt status to SCORED
-        await this.attemptRepository.update(id, {
-          status: AttemptStatus.SCORED,
+        // Add job to the queue for async processing
+        await queueService.addScoringJob({
+          attemptId: id,
+          transcript,
+          aiRuleId,
+          promptContent,
+          skillType: attempt.skillType,
         });
+
+        console.log(`[AttemptService] Queued scoring job for attempt ${id}`);
       } catch (error: any) {
         // Log the error but don't fail the submission
-        console.error(`AI scoring failed for attempt ${id}:`, error.message);
-        // Keep the attempt in SUBMITTED status if scoring fails
+        console.error(
+          `Failed to queue scoring job for attempt ${id}:`,
+          error.message,
+        );
+        // Keep the attempt in SUBMITTED status if queueing fails
       }
     }
 
     const updated = await this.attemptRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new InternalServerErrorException(`Failed to submit attempt with ID '${id}'`);
+      throw new InternalServerErrorException(
+        `Failed to submit attempt with ID '${id}'`,
+      );
     }
 
     return this.mapToResponseDTO(updated);
@@ -280,7 +383,7 @@ export class AttemptService {
     return {
       id: attempt.id,
       learnerId: attempt.learnerId,
-      promptId: attempt.promptId,
+      assignmentId: attempt.assignmentId,
       skillType: attempt.skillType,
       status: attempt.status,
       createdAt: attempt.createdAt,
@@ -293,7 +396,7 @@ export class AttemptService {
   private mapToListDTO(attempt: Attempt): AttemptListDTO {
     return {
       id: attempt.id,
-      promptId: attempt.promptId,
+      assignmentId: attempt.assignmentId,
       skillType: attempt.skillType,
       status: attempt.status,
       createdAt: attempt.createdAt,
@@ -305,15 +408,15 @@ export class AttemptService {
     return {
       id: attempt.id,
       learnerId: attempt.learnerId,
-      promptId: attempt.promptId,
+      assignmentId: attempt.assignmentId,
       skillType: attempt.skillType,
       status: attempt.status,
       createdAt: attempt.createdAt,
       startedAt: attempt.startedAt,
       submittedAt: attempt.submittedAt,
       scoredAt: attempt.scoredAt,
-      promptContent: attempt.prompt?.content,
-      promptDifficulty: attempt.prompt?.difficulty,
+      assignmentTitle: attempt.assignment?.title,
+      assignmentDescription: attempt.assignment?.description,
       media: attempt.media?.map((m) => ({
         id: m.id,
         mediaType: m.mediaType,
@@ -327,10 +430,7 @@ export class AttemptService {
       score: attempt.score
         ? {
             id: attempt.score.id,
-            fluency: Number(attempt.score.fluency),
-            pronunciation: Number(attempt.score.pronunciation),
-            lexical: Number(attempt.score.lexical),
-            grammar: Number(attempt.score.grammar),
+            scoreMetadata: attempt.score.scoreMetadata,
             overallBand: attempt.score.overallBand,
             feedback: attempt.score.feedback,
           }
