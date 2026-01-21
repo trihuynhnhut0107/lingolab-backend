@@ -1,41 +1,73 @@
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
-import { UserRole } from "../enums";
+import { UserRole, UILanguage, UserStatus } from "../enums";
 import * as bcrypt from 'bcryptjs';
+import { initializeDatabase } from "../config/database";
 
-const createTeacher = async () => {
+const seedUsers = async () => {
     try {
-        await AppDataSource.initialize();
-        console.log("Data Source has been initialized!");
-
+        await initializeDatabase();
         const userRepository = AppDataSource.getRepository(User);
 
-        const teacherEmail = "teacher@test.com";
-        const existingTeacher = await userRepository.findOneBy({ email: teacherEmail });
+        // 1. Seed Teacher
+        const teacherEmail = "teacher@example.com";
+        const teacherPassword = "password123";
+        let teacher = await userRepository.findOneBy({ email: teacherEmail });
 
-        if (existingTeacher) {
-            console.log("Teacher account already exists.");
-            return;
+        if (!teacher) {
+            console.log("Creating default teacher...");
+            const hashedPassword = await bcrypt.hash(teacherPassword, 10);
+            teacher = userRepository.create({
+                email: teacherEmail,
+                password: hashedPassword,
+                role: UserRole.TEACHER,
+                firstName: "Jane",
+                lastName: "Teacher",
+                uiLanguage: UILanguage.EN,
+                status: UserStatus.ACTIVE
+            });
+            await userRepository.save(teacher);
+            console.log("Teacher created.");
+        } else {
+            console.log("Teacher already exists.");
         }
 
-        const hashedPassword = await bcrypt.hash("teacher123", 10);
+        // 2. Seed Student
+        const studentEmail = "student@example.com";
+        const studentPassword = "password123";
+        let student = await userRepository.findOneBy({ email: studentEmail });
 
-        const teacher = new User();
-        teacher.email = teacherEmail;
-        teacher.password = hashedPassword;
-        teacher.role = UserRole.TEACHER;
-        // firstName and lastName removed as they are not columns in User entity
-        
-        await userRepository.save(teacher);
-        console.log("Teacher account created successfully:");
-        console.log("Email: teacher@test.com");
-        console.log("Password: teacher123");
+        if (!student) {
+            console.log("Creating default student...");
+            const hashedPassword = await bcrypt.hash(studentPassword, 10);
+            student = userRepository.create({
+                email: studentEmail,
+                password: hashedPassword,
+                role: UserRole.LEARNER,
+                firstName: "John",
+                lastName: "Student",
+                uiLanguage: UILanguage.EN,
+                status: UserStatus.ACTIVE
+            });
+            await userRepository.save(student);
+            console.log("Student created.");
+        } else {
+            console.log("Student already exists.");
+        }
+
+        console.log("\n✅ Seeding complete!");
+        console.log("-----------------------------------------");
+        console.log("Credential Summary:");
+        console.log(`Teacher: ${teacherEmail} / ${teacherPassword}`);
+        console.log(`Student: ${studentEmail} / ${studentPassword}`);
+        console.log("-----------------------------------------");
+
+        process.exit(0);
 
     } catch (error) {
-        console.error("Error creating teacher account:", error);
-    } finally {
-        await AppDataSource.destroy();
+        console.error("Error seeding users:", error);
+        process.exit(1);
     }
 };
 
-createTeacher();
+seedUsers();
