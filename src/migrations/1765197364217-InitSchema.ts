@@ -4,6 +4,20 @@ export class InitSchema1765197364217 implements MigrationInterface {
     name = 'InitSchema1765197364217'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        // Create ENUM types first
+        await queryRunner.query(`CREATE TYPE "public"."users_role_enum" AS ENUM('learner', 'teacher', 'admin')`);
+        await queryRunner.query(`CREATE TYPE "public"."users_status_enum" AS ENUM('active', 'locked')`);
+        await queryRunner.query(`CREATE TYPE "public"."users_uilanguage_enum" AS ENUM('vi', 'en')`);
+        await queryRunner.query(`CREATE TYPE "public"."assignments_status_enum" AS ENUM('draft', 'active', 'archived')`);
+        await queryRunner.query(`CREATE TYPE "public"."attempts_status_enum" AS ENUM('in_progress', 'submitted', 'scored')`);
+        await queryRunner.query(`CREATE TYPE "public"."prompts_skilltype_enum" AS ENUM('speaking', 'writing')`);
+        await queryRunner.query(`CREATE TYPE "public"."attempts_skilltype_enum" AS ENUM('speaking', 'writing')`);
+        await queryRunner.query(`CREATE TYPE "public"."prompts_difficulty_enum" AS ENUM('easy', 'medium', 'hard')`);
+        await queryRunner.query(`CREATE TYPE "public"."scoring_jobs_status_enum" AS ENUM('queued', 'processing', 'completed', 'failed')`);
+        await queryRunner.query(`CREATE TYPE "public"."attempt_media_mediatype_enum" AS ENUM('audio', 'video')`);
+        await queryRunner.query(`CREATE TYPE "public"."feedbacks_type_enum" AS ENUM('ai_generated', 'teacher_comment')`);
+        await queryRunner.query(`CREATE TYPE "public"."feedbacks_visibility_enum" AS ENUM('private_to_teacher', 'teacher_and_learner')`);
+
         await queryRunner.query(`CREATE TABLE "learner_profiles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "userId" uuid NOT NULL, "firstName" character varying(100), "lastName" character varying(100), "targetBand" integer, "currentBand" integer, "nativeLanguage" character varying(100), "learningGoals" text, "user_id" uuid, CONSTRAINT "REL_94cd9a55d9923c7f859e683c05" UNIQUE ("user_id"), CONSTRAINT "PK_d5c5325dd0d1716cf414f357c08" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE UNIQUE INDEX "idx_learner_profile_user" ON "learner_profiles" ("userId") `);
         await queryRunner.query(`CREATE TABLE "classes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "teacherId" uuid NOT NULL, "name" character varying(255) NOT NULL, "description" text, "code" character varying(50), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "teacher_id" uuid, CONSTRAINT "UQ_cf7491878e0fca8599438629988" UNIQUE ("code"), CONSTRAINT "PK_e207aa15404e9b2ce35910f9f7f" PRIMARY KEY ("id"))`);
@@ -109,6 +123,20 @@ export class InitSchema1765197364217 implements MigrationInterface {
         await queryRunner.query(`DROP TABLE "classes"`);
         await queryRunner.query(`DROP INDEX "public"."idx_learner_profile_user"`);
         await queryRunner.query(`DROP TABLE "learner_profiles"`);
+        
+        // Drop ENUM types last
+        await queryRunner.query(`DROP TYPE "public"."feedbacks_visibility_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."feedbacks_type_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."attempt_media_mediatype_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."scoring_jobs_status_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."prompts_difficulty_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."attempts_skilltype_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."prompts_skilltype_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."attempts_status_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."assignments_status_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."users_uilanguage_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."users_status_enum"`);
+        await queryRunner.query(`DROP TYPE "public"."users_role_enum"`);
     }
 
 }

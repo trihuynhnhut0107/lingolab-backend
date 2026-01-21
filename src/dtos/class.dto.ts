@@ -78,6 +78,7 @@ export class ClassListDTO {
   name!: string;
   code?: string;
   createdAt!: Date;
+  learnerCount?: number;
 }
 
 /**

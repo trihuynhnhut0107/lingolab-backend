@@ -23,6 +23,11 @@ export class CreateAttemptDTO {
   promptId!: string;
 
   skillType!: SkillType;
+
+  /**
+   * Optional ID of the assignment this attempt belongs to
+   */
+  assignmentId?: string;
 }
 
 /**
@@ -62,6 +67,24 @@ export class SubmitAttemptDTO {
 
 /**
  * @example {
+ *   "score": 7.5,
+ *   "feedback": "Great job, but work on pronunciation."
+ * }
+ */
+export class GradeAttemptDTO {
+  /**
+   * Overall band score (0-9)
+   */
+  score!: number;
+
+  /**
+   * Teacher's feedback comments
+   */
+  feedback!: string;
+}
+
+/**
+ * @example {
  *   "id": "attempt-123",
  *   "learnerId": "learner-1",
  *   "promptId": "prompt-123",
@@ -82,6 +105,7 @@ export class AttemptResponseDTO {
   startedAt?: Date;
   submittedAt?: Date;
   scoredAt?: Date;
+  content?: string;
 }
 
 /**
@@ -101,6 +125,27 @@ export class AttemptListDTO {
   status!: AttemptStatus;
   createdAt!: Date;
   submittedAt?: Date;
+  deadline?: Date;
+  title?: string;
+  score?: AttemptScoreResponseDTO;
+}
+
+/**
+ * @example {
+ *   "id": "attempt-123",
+ *   "studentName": "John Doe",
+ *   "assignmentTitle": "Essay 1",
+ *   "status": "SUBMITTED",
+ *   "submittedAt": "2024-11-14T10:10:00Z"
+ * }
+ */
+export class AttemptReviewDTO extends AttemptListDTO {
+  studentName!: string;
+  assignmentTitle!: string;
+  studentEmail?: string;
+  className?: string;
+  assignmentId?: string;
+  classId?: string;
 }
 
 /**
@@ -125,6 +170,11 @@ export class AttemptDetailDTO extends AttemptResponseDTO {
   media?: AttemptMediaResponseDTO[];
   score?: AttemptScoreResponseDTO;
   feedbacks?: AttemptFeedbackResponseDTO[];
+  studentName?: string;
+  studentEmail?: string;
+  assignmentTitle?: string;
+  assignmentDescription?: string;
+  className?: string;
 }
 
 /**
@@ -171,6 +221,7 @@ export class AttemptScoreResponseDTO {
   grammar!: number;
   overallBand!: number;
   feedback!: string;
+  detailedFeedback?: any;
 }
 
 /**

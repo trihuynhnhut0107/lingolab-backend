@@ -15,6 +15,7 @@ import { AttemptMedia } from "./AttemptMedia";
 import { ScoringJob } from "./ScoringJob";
 import { Score } from "./Score";
 import { Feedback } from "./Feedback";
+import { Assignment } from "./Assignment";
 import { SkillType, AttemptStatus } from "../enums";
 
 @Entity("attempts")
@@ -69,6 +70,10 @@ export class Attempt {
   @ManyToOne(() => Prompt, (prompt) => prompt.attempts)
   @JoinColumn({ name: "prompt_id" })
   prompt!: Prompt;
+
+  @ManyToOne(() => Assignment, (assignment) => assignment.attempts)
+  @JoinColumn({ name: "assignment_id" })
+  assignment?: Assignment;
 
   @OneToMany(() => AttemptMedia, (media) => media.attempt)
   media?: AttemptMedia[];

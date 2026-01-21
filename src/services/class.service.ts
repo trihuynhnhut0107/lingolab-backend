@@ -63,6 +63,7 @@ export class ClassService {
   // Get all classes
   async getAllClasses(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const [classes, total] = await this.classRepository.findAndCount({
+      relations: ["learners"],
       take: limit,
       skip: offset,
     });
@@ -78,6 +79,7 @@ export class ClassService {
   async getClassesByTeacher(teacherId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const [classes, total] = await this.classRepository.findAndCount({
       where: { teacherId },
+      relations: ["learners"],
       take: limit,
       skip: offset,
     });
@@ -294,6 +296,7 @@ export class ClassService {
       name: classs.name,
       code: classs.code,
       createdAt: classs.createdAt,
+      learnerCount: classs.learners?.length || 0,
     };
   }
 
@@ -309,10 +312,15 @@ export class ClassService {
       teacherEmail: classs.teacher?.email,
       teacherName: classs.teacher?.email.split("@")[0],
       learnerCount: classs.learners?.length || 0,
-      learners: classs.learners?.map((l) => ({
-        id: l.id,
-        email: l.email,
-      })),
+      learners: classs.learners
+        ?.filter(l => l.id !== classs.teacherId)
+        .map((l) => ({
+          id: l.id,
+          email: l.email,
+          firstName: l.firstName,
+          lastName: l.lastName,
+          avatar: l.avatar
+        })),
     };
   }
 }

@@ -65,6 +65,55 @@ export class AssignmentController extends Controller {
   }
 
   /**
+   * Get assignments for the logged-in learner
+   */
+  @Get("my-assignments")
+  @Security("bearer")
+  @Response(200, "Assignments retrieved")
+  @Response(401, "Unauthorized")
+  async getLearnerAssignments(
+    @Request() request: AuthRequest,
+    @Query() limit: number = 10,
+    @Query() offset: number = 0
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    const user = request.user;
+    if (!user) {
+      throw new Error("User not found in request");
+    }
+    
+    return await assignmentService.getLearnerAssignments(
+      user.id,
+      limit,
+      offset
+    );
+  }
+
+  /**
+   * Get assignments created by the logged-in teacher
+   */
+  @Get("teacher/my-created")
+  @Security("bearer")
+  @Response(200, "Assignments retrieved")
+  @Response(401, "Unauthorized")
+  @TeacherOnly()
+  async getCreatedAssignments(
+    @Request() request: AuthRequest,
+    @Query() limit: number = 10,
+    @Query() offset: number = 0
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    const user = request.user;
+    if (!user) {
+      throw new Error("User not found in request");
+    }
+    
+    return await assignmentService.getTeacherAssignments(
+      user.id,
+      limit,
+      offset
+    );
+  }
+
+  /**
    * Get all assignments with pagination
    */
   @Get()
@@ -111,10 +160,14 @@ export class AssignmentController extends Controller {
    * Get assignment by ID
    */
   @Get("{id}")
+  @Security("bearer")
   @Response(200, "Assignment found")
   @Response(404, "Assignment not found")
-  async getAssignmentById(@Path() id: string): Promise<AssignmentDetailDTO> {
-    return await assignmentService.getAssignmentById(id);
+  async getAssignmentById(
+    @Path() id: string,
+    @Request() request: AuthRequest
+  ): Promise<AssignmentDetailDTO> {
+    return await assignmentService.getAssignmentById(id, request.user?.id);
   }
 
   /**
@@ -139,6 +192,8 @@ export class AssignmentController extends Controller {
   ): Promise<AssignmentStudentSubmissionDTO[]> {
     return await assignmentService.getStudentSubmissions(id);
   }
+
+
 
   /**
    * Update assignment details

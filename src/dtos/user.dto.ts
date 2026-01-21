@@ -26,6 +26,12 @@ export class CreateUserDTO {
 
   role?: UserRole;
   uiLanguage?: UILanguage;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
+  avatar?: string;
 }
 
 /**
@@ -40,7 +46,14 @@ export class UpdateUserDTO {
   role?: UserRole;
   status?: UserStatus;
   uiLanguage?: UILanguage;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  bio?: string;
+  phone?: string;
+  location?: string;
 }
+
 
 /**
  * @example {
@@ -77,6 +90,13 @@ export class UserResponseDTO {
   uiLanguage!: UILanguage;
   createdAt!: Date;
   updatedAt!: Date;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  avatar?: string;
+  bio?: string;
+  phone?: string;
+  location?: string;
 }
 
 /**
@@ -115,6 +135,12 @@ export class UserListDTO {
   role!: UserRole;
   status!: UserStatus;
   createdAt!: Date;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  avatar?: string;
+  enrolledClass?: string;
+  lastActiveAt?: Date;
 }
 
 // Nested DTOs

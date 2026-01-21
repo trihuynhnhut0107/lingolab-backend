@@ -100,6 +100,8 @@ export class AuthUserDTO {
   role!: UserRole;
   firstName?: string;
   lastName?: string;
+  name?: string;
+  avatar?: string;
 }
 
 /**

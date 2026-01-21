@@ -40,17 +40,58 @@ export class AssignmentService {
     return this.mapToResponseDTO(savedAssignment);
   }
 
-  async getAssignmentById(id: string): Promise<AssignmentDetailDTO> {
-    const assignment = await this.assignmentRepository.findOne({
-      where: { id },
-      relations: ["class", "prompt"],
-    });
+  async getAssignmentById(id: string, learnerId?: string): Promise<AssignmentDetailDTO> {
+    try {
+        const query = this.assignmentRepository
+          .createQueryBuilder("assignment")
+          .leftJoinAndSelect("assignment.class", "class")
+          .leftJoinAndSelect("assignment.prompt", "prompt")
+          .where("assignment.id = :id", { id });
 
-    if (!assignment) {
-      throw new HttpException("Assignment not found", 404);
+        if (learnerId) {
+          query.leftJoinAndSelect(
+            "assignment.attempts",
+            "attempt",
+            "attempt.learnerId = :learnerId",
+            { learnerId }
+          );
+        }
+
+        const assignment = await query.getOne();
+
+        if (!assignment) {
+          console.error(`[AssignmentService] Assignment ${id} NOT FOUND`);
+          throw new HttpException("Assignment not found", 404);
+        }
+
+        // Explicitly fetch the attempt to ensure relations load safely
+        let myAttempt: Attempt | null = null;
+        if (learnerId) {
+            try {
+                myAttempt = await this.attemptRepository.findOne({
+                    where: {
+                        assignment: { id: id },
+                        learnerId: learnerId
+                    },
+                    relations: ['score', 'feedbacks']
+                });
+            } catch (attemptError) {
+                console.error(`[AssignmentService] Failed to fetch attempt:`, attemptError);
+                // Don't fail the whole request if attempt fetch fails, just log it
+            }
+        }
+
+        return {
+          ...this.mapToDetailDTO(assignment),
+          attemptId: myAttempt?.id,
+          submissionStatus: myAttempt?.status,
+          score: myAttempt?.score?.overallBand,
+          feedback: myAttempt?.score?.feedback,
+        };
+    } catch (error) {
+        console.error(`[AssignmentService] Error in getAssignmentById:`, error);
+        throw error;
     }
-
-    return this.mapToDetailDTO(assignment);
   }
 
   async getAllAssignments(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
@@ -102,6 +143,89 @@ export class AssignmentService {
       skip: offset,
       take: limit,
       order: { createdAt: "DESC" },
+    });
+
+    return {
+      data: data.map((a) => this.mapToListDTO(a)),
+      pagination: {
+        limit,
+        offset,
+        total,
+      },
+    };
+  }
+
+  async getLearnerAssignments(
+    learnerId: string,
+    limit: number = 10,
+    offset: number = 0
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    console.log(`[DEBUG] getLearnerAssignments called for learnerId: ${learnerId}`);
+    const query = this.assignmentRepository
+        .createQueryBuilder("assignment")
+        .innerJoinAndSelect("assignment.class", "class")
+        .leftJoinAndSelect("assignment.prompt", "prompt")
+        .innerJoin("class.learners", "learner")
+        .where("learner.id = :learnerId", { learnerId })
+        .orderBy("assignment.deadline", "ASC")
+        .skip(offset)
+        .take(limit);
+
+    const [assignments, total] = await query.getManyAndCount();
+    console.log(`[DEBUG] Found ${total} assignments for learner ${learnerId}`);
+
+    // Fetch attempts separately to avoid join issues
+    let attemptMap = new Map<string, Attempt>();
+    if (assignments.length > 0) {
+        const assignmentIds = assignments.map(a => a.id);
+        const attempts = await this.attemptRepository.find({
+            where: {
+                learnerId: learnerId,
+                assignment: { id: In(assignmentIds) }
+            },
+            relations: ['assignment', 'score']
+        });
+        
+        attempts.forEach(a => {
+            if (a.assignment?.id) attemptMap.set(a.assignment.id, a);
+        });
+    }
+
+    return {
+        data: assignments.map((a) => {
+        const myAttempt = attemptMap.get(a.id); 
+        return {
+            ...this.mapToListDTO(a),
+            submissionStatus: myAttempt?.status,
+            score: myAttempt?.score?.overallBand,
+            attemptId: myAttempt?.id
+        };
+        }),
+        pagination: {
+        limit,
+        offset,
+        total,
+        },
+    };
+  }
+
+  async getTeacherAssignments(
+    teacherId: string,
+    limit: number = 10,
+    offset: number = 0
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    const [data, total] = await this.assignmentRepository.findAndCount({
+      where: {
+        class: {
+          teacherId: teacherId
+        }
+      },
+      relations: ["class", "prompt"],
+      order: {
+        deadline: "ASC"
+      },
+      skip: offset,
+      take: limit
     });
 
     return {
@@ -231,6 +355,7 @@ export class AssignmentService {
       totalEnrolled: assignment.totalEnrolled,
       totalSubmitted: assignment.totalSubmitted,
       totalScored: assignment.totalScored,
+      averageScore: Number(assignment.averageScore),
       allowLateSubmission: assignment.allowLateSubmission,
       lateDeadline: assignment.lateDeadline,
       createdAt: assignment.createdAt,
@@ -264,6 +389,7 @@ export class AssignmentService {
         ? {
             id: assignment.prompt.id,
             title: assignment.prompt.content.substring(0, 100),
+            content: assignment.prompt.content,
             skillType: assignment.prompt.skillType,
           }
         : undefined,
@@ -278,7 +404,49 @@ export class AssignmentService {
       status: assignment.status,
       totalSubmitted: assignment.totalSubmitted,
       totalEnrolled: assignment.totalEnrolled,
+      averageScore: Number(assignment.averageScore),
+      className: assignment.class?.name,
+      type: assignment.prompt?.skillType,
     };
+  }
+  async updateAssignmentStats(assignmentId: string): Promise<void> {
+    const assignment = await this.assignmentRepository.findOne({
+      where: { id: assignmentId },
+      relations: ["class", "class.learners"],
+    });
+
+    if (!assignment) return;
+
+    // Update totalEnrolled
+    const totalEnrolled = assignment.class?.learners?.length || 0;
+
+    // Count submitted and scored attempts
+    const attempts = await this.attemptRepository.find({
+      where: {
+        assignment: { id: assignmentId },
+      },
+    });
+
+    const totalSubmitted = attempts.filter(
+      (a) =>
+        a.status === AttemptStatus.SUBMITTED || a.status === AttemptStatus.SCORED
+    ).length;
+    
+    const totalScored = attempts.filter(
+      (a) => a.status === AttemptStatus.SCORED
+    ).length;
+
+    // Calculate Average Score
+    const scoredAttempts = attempts.filter(a => a.status === AttemptStatus.SCORED && a.score?.overallBand);
+    const totalScoreVal = scoredAttempts.reduce((sum, a) => sum + Number(a.score!.overallBand), 0);
+    const averageScore = scoredAttempts.length > 0 ? totalScoreVal / scoredAttempts.length : 0;
+
+    await this.assignmentRepository.update(assignmentId, {
+      totalEnrolled,
+      totalSubmitted,
+      totalScored,
+      averageScore
+    });
   }
 }
 

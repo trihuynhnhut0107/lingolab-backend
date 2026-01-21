@@ -51,6 +51,8 @@ export class AuthService {
       password: hashedPassword,
       role: dto.role || UserRole.LEARNER,
       status: UserStatus.ACTIVE,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -220,6 +222,12 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: (user.firstName && user.lastName) 
+        ? `${user.firstName} ${user.lastName}` 
+        : (user.firstName || user.lastName || user.email.split('@')[0]),
+      avatar: user.avatar,
     };
   }
 }

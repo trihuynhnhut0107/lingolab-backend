@@ -102,6 +102,7 @@ export class AssignmentResponseDTO {
   totalEnrolled!: number;
   totalSubmitted!: number;
   totalScored!: number;
+  averageScore?: number;
   allowLateSubmission!: boolean;
   lateDeadline?: Date;
   createdAt!: Date;
@@ -138,11 +139,16 @@ export class AssignmentDetailDTO extends AssignmentResponseDTO {
     id: string;
     name: string;
   };
+  attemptId?: string;
+  submissionStatus?: string;
   prompt?: {
     id: string;
     title: string;
+    content?: string;
     skillType: string;
   };
+  score?: number;
+  feedback?: string;
 }
 
 /**
@@ -163,6 +169,12 @@ export class AssignmentListDTO {
   status!: AssignmentStatus;
   totalSubmitted!: number;
   totalEnrolled!: number;
+  className?: string;
+  submissionStatus?: string;
+  score?: number;
+  averageScore?: number;
+  type?: string;
+  attemptId?: string;
 }
 
 /**
