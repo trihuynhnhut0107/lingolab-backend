@@ -22,6 +22,9 @@ export enum FeedbackVisibility {
 }
 
 @Entity("feedbacks")
+@Index("idx_feedback_attempt", ["attemptId"])
+@Index("idx_feedback_author", ["authorId"])
+@Index("idx_feedback_created", ["createdAt"])
 export class Feedback {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -60,10 +63,10 @@ export class Feedback {
   @ManyToOne(() => Attempt, (attempt) => attempt.feedbacks, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "attemptId" })
+  @JoinColumn({ name: "attempt_id" })
   attempt!: Attempt;
 
   @ManyToOne(() => User, (user) => user.feedbacks)
-  @JoinColumn({ name: "authorId" })
+  @JoinColumn({ name: "author_id" })
   author!: User;
 }

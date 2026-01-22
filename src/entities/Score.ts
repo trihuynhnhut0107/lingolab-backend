@@ -10,6 +10,7 @@ import {
 import { Attempt } from "./Attempt";
 
 @Entity("scores")
+@Index("idx_score_attempt", ["attemptId"], { unique: true })
 export class Score {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -17,15 +18,26 @@ export class Score {
   @Column({ type: "uuid", unique: true })
   attemptId!: string;
 
-  @Column({ type: "jsonb" })
-  scoreMetadata!: {
-    // For speaking: fluency, lexical, grammar, pronunciation
-    // For writing: task_achievement, coherence_cohesion, lexical, grammatical
-    [key: string]: number;
-  };
+  @Column({ type: "numeric", precision: 3, scale: 1, nullable: true })
+  fluency!: number | null; // 0-9 (Nullable for Writing)
+
+  @Column({ type: "numeric", precision: 3, scale: 1, nullable: true })
+  pronunciation!: number | null; // 0-9 (Nullable for Writing)
 
   @Column({ type: "numeric", precision: 3, scale: 1 })
-  overallBand!: number; // 5.0-9.0 with 0.5 increments
+  lexical!: number; // 0-9
+
+  @Column({ type: "numeric", precision: 3, scale: 1 })
+  grammar!: number; // 0-9
+
+  @Column({ type: "numeric", precision: 3, scale: 1 })
+  coherence!: number; // 0-9
+
+  @Column({ type: "numeric", precision: 3, scale: 1, nullable: true })
+  taskResponse!: number | null; // 0-9 (For Writing)
+
+  @Column({ type: "numeric", precision: 3, scale: 1, nullable: true })
+  overallBand!: number; // 0-9
 
   @Column({ type: "text" })
   feedback!: string;

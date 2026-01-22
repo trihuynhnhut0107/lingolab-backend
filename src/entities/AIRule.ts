@@ -19,6 +19,8 @@ export interface ScoringWeights {
 }
 
 @Entity("ai_rules")
+@Index("idx_ai_rule_teacher", ["teacherId"])
+@Index("idx_ai_rule_status", ["isActive"])
 export class AIRule {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -61,6 +63,6 @@ export class AIRule {
   @ManyToOne(() => User, (user) => user.aiRules, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "teacherId" })
+  @JoinColumn({ name: "teacher_id" })
   teacher?: User;
 }

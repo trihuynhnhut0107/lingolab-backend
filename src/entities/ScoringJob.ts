@@ -11,6 +11,8 @@ import { Attempt } from "./Attempt";
 import { ScoringJobStatus } from "../enums";
 
 @Entity("scoring_jobs")
+@Index("idx_scoring_job_attempt", ["attemptId"], { unique: true })
+@Index("idx_scoring_jobs_status_created", ["status", "createdAt"])
 export class ScoringJob {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -44,6 +46,6 @@ export class ScoringJob {
   @OneToOne(() => Attempt, (attempt) => attempt.scoringJob, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "attemptId" })
+  @JoinColumn({ name: "attempt_id" })
   attempt!: Attempt;
 }

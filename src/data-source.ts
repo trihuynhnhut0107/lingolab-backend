@@ -40,7 +40,7 @@ export const AppDataSource = new DataSource({
   username: DB_USER || "postgres",
   password: DB_PASSWORD || "postgres",
   database: DB_NAME || "lingolab_db",
-  synchronize: false,
+  synchronize: true,
   logging: TYPEORM_LOGGING === "true",
   entities: [User, LearnerProfile, Prompt, Attempt, AttemptMedia, ScoringJob, Score, Feedback, Class, Assignment, AIRule],
   // For migrations: works with both ts-node (src/**) and compiled output (dist/**)

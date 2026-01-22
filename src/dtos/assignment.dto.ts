@@ -55,18 +55,6 @@ export class CreateAssignmentDTO {
    * Late submission deadline
    */
   lateDeadline?: Date;
-
-  /**
-   * AI Rule ID for automatic scoring
-   * If provided, attempts will be automatically scored using this rule upon submission
-   */
-  aiRuleId?: string;
-
-  /**
-   * Enable automatic AI scoring
-   * If true and aiRuleId is provided, attempts will be automatically scored upon submission
-   */
-  enableAIScoring?: boolean;
 }
 
 /**
@@ -83,16 +71,6 @@ export class UpdateAssignmentDTO {
   status?: AssignmentStatus;
   allowLateSubmission?: boolean;
   lateDeadline?: Date;
-  /**
-   * AI Rule ID for automatic scoring
-   * Set to null to disable automatic scoring
-   */
-  aiRuleId?: string | null;
-
-  /**
-   * Enable/disable automatic AI scoring
-   */
-  enableAIScoring?: boolean;
 }
 
 /**
@@ -124,10 +102,9 @@ export class AssignmentResponseDTO {
   totalEnrolled!: number;
   totalSubmitted!: number;
   totalScored!: number;
+  averageScore?: number;
   allowLateSubmission!: boolean;
   lateDeadline?: Date;
-  aiRuleId?: string;
-  enableAIScoring!: boolean;
   createdAt!: Date;
   updatedAt!: Date;
 }
@@ -162,16 +139,16 @@ export class AssignmentDetailDTO extends AssignmentResponseDTO {
     id: string;
     name: string;
   };
+  attemptId?: string;
+  submissionStatus?: string;
   prompt?: {
     id: string;
     title: string;
+    content?: string;
     skillType: string;
   };
-  aiRule?: {
-    id: string;
-    name: string;
-    strictness: number;
-  };
+  score?: number;
+  feedback?: string;
 }
 
 /**
@@ -191,7 +168,14 @@ export class AssignmentListDTO {
   deadline!: Date;
   status!: AssignmentStatus;
   totalSubmitted!: number;
+  totalScored!: number;
   totalEnrolled!: number;
+  className?: string;
+  submissionStatus?: string;
+  score?: number;
+  averageScore?: number;
+  type?: string;
+  attemptId?: string;
 }
 
 /**
@@ -230,4 +214,5 @@ export class AssignmentStudentSubmissionDTO {
   status!: string;
   submittedAt?: Date;
   score?: number;
+  attemptId?: string;
 }

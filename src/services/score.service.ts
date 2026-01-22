@@ -30,7 +30,7 @@ export class ScoreService {
     });
     if (!attempt) {
       throw new NotFoundException(
-        `Attempt with ID '${dto.attemptId}' not found`,
+        `Attempt with ID '${dto.attemptId}' not found`
       );
     }
 
@@ -40,7 +40,7 @@ export class ScoreService {
     });
     if (existingScore) {
       throw new ConflictException(
-        `Score already exists for attempt with ID '${dto.attemptId}'`,
+        `Score already exists for attempt with ID '${dto.attemptId}'`
       );
     }
 
@@ -50,28 +50,23 @@ export class ScoreService {
       dto.coherence,
       dto.pronunciation,
       dto.lexical,
-      dto.grammar,
+      dto.grammar
     );
 
     // Validate overall band
     if (dto.overallBand < 5 || dto.overallBand > 9) {
       throw new BadRequestException(
-        `Invalid overall band score ${dto.overallBand}. Overall band must be between 5 and 9`,
+        `Invalid overall band score ${dto.overallBand}. Overall band must be between 5 and 9`
       );
     }
 
-    const scoreMetadata: Record<string, number> = {};
-    if (dto.fluency !== undefined) scoreMetadata.fluency = dto.fluency;
-    if (dto.coherence !== undefined)
-      scoreMetadata.coherence_cohesion = dto.coherence;
-    if (dto.lexical !== undefined) scoreMetadata.lexical = dto.lexical;
-    if (dto.grammar !== undefined) scoreMetadata.grammar = dto.grammar;
-    if (dto.pronunciation !== undefined)
-      scoreMetadata.pronunciation = dto.pronunciation;
-
     const score = this.scoreRepository.create({
       attemptId: dto.attemptId,
-      scoreMetadata,
+      fluency: dto.fluency,
+      coherence: dto.coherence,
+      pronunciation: dto.pronunciation,
+      lexical: dto.lexical,
+      grammar: dto.grammar,
       overallBand: dto.overallBand,
       feedback: dto.feedback,
       detailedFeedback: dto.detailedFeedback,
@@ -92,7 +87,7 @@ export class ScoreService {
   async getScoreById(id: string): Promise<ScoreDetailDTO> {
     const score = await this.scoreRepository.findOne({
       where: { id },
-      relations: ["attempt", "attempt.assignment", "attempt.assignment.prompt"],
+      relations: ["attempt", "attempt.prompt"],
     });
     if (!score) {
       throw new NotFoundException(`Score with ID '${id}' not found`);
@@ -105,7 +100,7 @@ export class ScoreService {
     const score = await this.scoreRepository.findOne({ where: { attemptId } });
     if (!score) {
       throw new NotFoundException(
-        `Score for attempt with ID '${attemptId}' not found`,
+        `Score for attempt with ID '${attemptId}' not found`
       );
     }
     return this.mapToResponseDTO(score);
@@ -114,7 +109,7 @@ export class ScoreService {
   // Get all scores
   async getAllScores(
     limit: number = 10,
-    offset: number = 0,
+    offset: number = 0
   ): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     const [scores, total] = await this.scoreRepository.findAndCount({
       take: limit,
@@ -124,7 +119,7 @@ export class ScoreService {
       scores.map((s) => this.mapToListDTO(s)),
       total,
       limit,
-      offset,
+      offset
     );
   }
 
@@ -132,11 +127,11 @@ export class ScoreService {
   async getScoresByBand(
     band: number,
     limit: number = 10,
-    offset: number = 0,
+    offset: number = 0
   ): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     if (band < 5 || band > 9) {
       throw new BadRequestException(
-        `Invalid band value ${band}. Band must be between 5 and 9`,
+        `Invalid band value ${band}. Band must be between 5 and 9`
       );
     }
 
@@ -149,7 +144,7 @@ export class ScoreService {
       scores.map((s) => this.mapToListDTO(s)),
       total,
       limit,
-      offset,
+      offset
     );
   }
 
@@ -158,11 +153,11 @@ export class ScoreService {
     minBand: number,
     maxBand: number,
     limit: number = 10,
-    offset: number = 0,
+    offset: number = 0
   ): Promise<PaginatedResponseDTO<ScoreListDTO>> {
     if (minBand < 5 || maxBand > 9 || minBand > maxBand) {
       throw new BadRequestException(
-        `Invalid band range (${minBand}-${maxBand}). Bands must be between 5 and 9, and minBand must not exceed maxBand`,
+        `Invalid band range (${minBand}-${maxBand}). Bands must be between 5 and 9, and minBand must not exceed maxBand`
       );
     }
 
@@ -170,7 +165,7 @@ export class ScoreService {
       .createQueryBuilder("score")
       .where(
         "score.overallBand >= :minBand AND score.overallBand <= :maxBand",
-        { minBand, maxBand },
+        { minBand, maxBand }
       )
       .take(limit)
       .skip(offset)
@@ -180,14 +175,14 @@ export class ScoreService {
       scores.map((s) => this.mapToListDTO(s)),
       total,
       limit,
-      offset,
+      offset
     );
   }
 
   // Update score
   async updateScore(
     id: string,
-    dto: UpdateScoreDTO,
+    dto: UpdateScoreDTO
   ): Promise<ScoreResponseDTO> {
     const score = await this.scoreRepository.findOne({ where: { id } });
     if (!score) {
@@ -203,12 +198,11 @@ export class ScoreService {
       dto.grammar !== undefined
     ) {
       this.validateScores(
-        dto.fluency ?? score.scoreMetadata?.fluency,
-        dto.coherence ?? score.scoreMetadata?.coherence_cohesion,
-        dto.pronunciation ?? score.scoreMetadata?.pronunciation,
-        dto.lexical ?? score.scoreMetadata?.lexical,
-        dto.grammar ??
-          (score.scoreMetadata?.grammar || score.scoreMetadata?.grammatical),
+        dto.fluency ?? score.fluency,
+        dto.coherence ?? score.coherence,
+        dto.pronunciation ?? score.pronunciation,
+        dto.lexical ?? score.lexical,
+        dto.grammar ?? score.grammar
       );
     }
 
@@ -218,7 +212,7 @@ export class ScoreService {
       (dto.overallBand < 5 || dto.overallBand > 9)
     ) {
       throw new BadRequestException(
-        `Invalid overall band score ${dto.overallBand}. Overall band must be between 5 and 9`,
+        `Invalid overall band score ${dto.overallBand}. Overall band must be between 5 and 9`
       );
     }
 
@@ -226,7 +220,7 @@ export class ScoreService {
     const updated = await this.scoreRepository.findOne({ where: { id } });
     if (!updated) {
       throw new InternalServerErrorException(
-        `Failed to update score with ID '${id}'`,
+        `Failed to update score with ID '${id}'`
       );
     }
 
@@ -280,7 +274,7 @@ export class ScoreService {
     coherence: number,
     pronunciation: number,
     lexical: number,
-    grammar: number,
+    grammar: number
   ): void {
     const scores = [
       { name: "fluency", value: fluency },
@@ -292,7 +286,7 @@ export class ScoreService {
     for (const score of scores) {
       if (score.value < 0 || score.value > 9) {
         throw new BadRequestException(
-          `Invalid ${score.name} score ${score.value}. Score must be between 0 and 9`,
+          `Invalid ${score.name} score ${score.value}. Score must be between 0 and 9`
         );
       }
     }
@@ -303,11 +297,11 @@ export class ScoreService {
     return {
       id: score.id,
       attemptId: score.attemptId,
-      fluency: score.scoreMetadata?.fluency,
-      coherence: score.scoreMetadata?.coherence_cohesion,
-      pronunciation: score.scoreMetadata?.pronunciation,
-      lexical: score.scoreMetadata?.lexical,
-      grammar: score.scoreMetadata?.grammar ?? score.scoreMetadata?.grammatical,
+      fluency: Number(score.fluency),
+      coherence: Number(score.coherence),
+      pronunciation: Number(score.pronunciation),
+      lexical: Number(score.lexical),
+      grammar: Number(score.grammar),
       overallBand: score.overallBand,
       feedback: score.feedback,
       detailedFeedback: score.detailedFeedback,
@@ -328,17 +322,17 @@ export class ScoreService {
     return {
       id: score.id,
       attemptId: score.attemptId,
-      fluency: score.scoreMetadata?.fluency,
-      coherence: score.scoreMetadata?.coherence_cohesion,
-      pronunciation: score.scoreMetadata?.pronunciation,
-      lexical: score.scoreMetadata?.lexical,
-      grammar: score.scoreMetadata?.grammar ?? score.scoreMetadata?.grammatical,
+      fluency: Number(score.fluency),
+      coherence: Number(score.coherence),
+      pronunciation: Number(score.pronunciation),
+      lexical: Number(score.lexical),
+      grammar: Number(score.grammar),
       overallBand: score.overallBand,
       feedback: score.feedback,
       detailedFeedback: score.detailedFeedback,
       createdAt: score.createdAt,
       attemptDate: score.attempt?.createdAt,
-      promptContent: score.attempt?.assignment?.prompt?.content,
+      promptContent: score.attempt?.prompt?.content,
       skillType: score.attempt?.skillType,
     };
   }

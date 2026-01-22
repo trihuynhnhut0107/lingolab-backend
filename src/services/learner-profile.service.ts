@@ -63,7 +63,23 @@ export class LearnerProfileService {
       relations: ["user"],
     });
     if (!profile) {
-      throw new NotFoundException(`Learner profile for user with ID '${userId}' not found`);
+      // Auto-create profile if missing
+      const newProfile = this.learnerProfileRepository.create({
+          userId,
+          targetBand: 6.0, 
+          currentBand: 0,
+          learningGoals: "Generated profile",
+      });
+      await this.learnerProfileRepository.save(newProfile);
+      
+      const savedProfile = await this.learnerProfileRepository.findOne({
+          where: { id: newProfile.id },
+          relations: ["user"],
+      });
+      
+      if (!savedProfile) throw new InternalServerErrorException("Failed to create default profile");
+      
+      return this.mapToDetailDTO(savedProfile);
     }
     return this.mapToDetailDTO(profile);
   }
@@ -93,6 +109,17 @@ export class LearnerProfileService {
     }
 
     await this.learnerProfileRepository.update(id, dto);
+
+    // Sync user details if provided
+    if (dto.firstName || dto.lastName) {
+      if (profile.userId) {
+        await this.userRepository.update(profile.userId, {
+            ...(dto.firstName && { firstName: dto.firstName }),
+            ...(dto.lastName && { lastName: dto.lastName })
+        });
+      }
+    }
+
     const updated = await this.learnerProfileRepository.findOne({ where: { id } });
     if (!updated) {
       throw new InternalServerErrorException(`Failed to update learner profile with ID '${id}'`);

@@ -80,6 +80,18 @@ npm run dev
 
 The server will start on `http://localhost:3000` with hot-reload enabled.
 
+### 6. 🌱 Database Seeding (Optional)
+
+To populate the database with default Teacher and Student accounts for testing:
+
+```bash
+npm run seed
+```
+
+**Default Credentials:**
+- **Teacher**: `teacher@example.com` / `password123`
+- **Student**: `student@example.com` / `password123`
+
 ## 📦 Build for Production
 
 ```bash

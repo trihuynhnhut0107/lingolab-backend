@@ -15,35 +15,23 @@ import { Class } from "../entities/Class";
 import { User } from "../entities/User";
 import { createPaginatedResponse } from "../utils/pagination.utils";
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
-import {
-  NotFoundException,
-  ConflictException,
-  InternalServerErrorException,
-} from "../exceptions/HttpException";
-import { AssignmentService } from "./assignment.service";
+import { NotFoundException, ConflictException, InternalServerErrorException } from "../exceptions/HttpException";
 
 export class ClassService {
   private classRepository = AppDataSource.getRepository(Class);
   private userRepository = AppDataSource.getRepository(User);
-  private assignmentService = new AssignmentService();
 
   // Create class
   async createClass(dto: CreateClassDTO): Promise<ClassResponseDTO> {
     // Check if teacher exists
-    const teacher = await this.userRepository.findOne({
-      where: { id: dto.teacherId },
-    });
+    const teacher = await this.userRepository.findOne({ where: { id: dto.teacherId } });
     if (!teacher) {
-      throw new NotFoundException(
-        `Teacher with ID '${dto.teacherId}' not found`
-      );
+      throw new NotFoundException(`Teacher with ID '${dto.teacherId}' not found`);
     }
 
     // Check if code is unique (if provided)
     if (dto.code) {
-      const existingClass = await this.classRepository.findOne({
-        where: { code: dto.code },
-      });
+      const existingClass = await this.classRepository.findOne({ where: { code: dto.code } });
       if (existingClass) {
         throw new ConflictException(`Class code '${dto.code}' already exists`);
       }
@@ -73,11 +61,9 @@ export class ClassService {
   }
 
   // Get all classes
-  async getAllClasses(
-    limit: number = 10,
-    offset: number = 0
-  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
+  async getAllClasses(limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const [classes, total] = await this.classRepository.findAndCount({
+      relations: ["learners"],
       take: limit,
       skip: offset,
     });
@@ -90,13 +76,10 @@ export class ClassService {
   }
 
   // Get classes by teacher
-  async getClassesByTeacher(
-    teacherId: string,
-    limit: number = 10,
-    offset: number = 0
-  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
+  async getClassesByTeacher(teacherId: string, limit: number = 10, offset: number = 0): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const [classes, total] = await this.classRepository.findAndCount({
       where: { teacherId },
+      relations: ["learners"],
       take: limit,
       skip: offset,
     });
@@ -121,19 +104,14 @@ export class ClassService {
   }
 
   // Get classes with filter
-  async getClassesByFilter(
-    filter: ClassFilterDTO
-  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
+  async getClassesByFilter(filter: ClassFilterDTO): Promise<PaginatedResponseDTO<ClassListDTO>> {
     const limit = filter.limit || 10;
     const offset = filter.offset || 0;
     return this.getAllClasses(limit, offset);
   }
 
   // Update class
-  async updateClass(
-    id: string,
-    dto: UpdateClassDTO
-  ): Promise<ClassResponseDTO> {
+  async updateClass(id: string, dto: UpdateClassDTO): Promise<ClassResponseDTO> {
     const classs = await this.classRepository.findOne({ where: { id } });
     if (!classs) {
       throw new NotFoundException(`Class with ID '${id}' not found`);
@@ -141,9 +119,7 @@ export class ClassService {
 
     // Check if code is being changed and already exists
     if (dto.code && dto.code !== classs.code) {
-      const existingClass = await this.classRepository.findOne({
-        where: { code: dto.code },
-      });
+      const existingClass = await this.classRepository.findOne({ where: { code: dto.code } });
       if (existingClass) {
         throw new ConflictException(`Class code '${dto.code}' already exists`);
       }
@@ -152,9 +128,7 @@ export class ClassService {
     await this.classRepository.update(id, dto);
     const updated = await this.classRepository.findOne({ where: { id } });
     if (!updated) {
-      throw new InternalServerErrorException(
-        `Failed to update class with ID '${id}'`
-      );
+      throw new InternalServerErrorException(`Failed to update class with ID '${id}'`);
     }
 
     return this.mapToResponseDTO(updated);
@@ -171,24 +145,15 @@ export class ClassService {
   }
 
   // Enroll learner
-  async enrollLearner(
-    classId: string,
-    dto: EnrollLearnerDTO
-  ): Promise<ClassDetailDTO> {
-    const classs = await this.classRepository.findOne({
-      where: { id: classId },
-    });
+  async enrollLearner(classId: string, dto: EnrollLearnerDTO): Promise<ClassDetailDTO> {
+    const classs = await this.classRepository.findOne({ where: { id: classId } });
     if (!classs) {
       throw new NotFoundException(`Class with ID '${classId}' not found`);
     }
 
-    const learner = await this.userRepository.findOne({
-      where: { id: dto.learnerId },
-    });
+    const learner = await this.userRepository.findOne({ where: { id: dto.learnerId } });
     if (!learner) {
-      throw new NotFoundException(
-        `Learner with ID '${dto.learnerId}' not found`
-      );
+      throw new NotFoundException(`Learner with ID '${dto.learnerId}' not found`);
     }
 
     // Add learner to class using the many-to-many relationship
@@ -210,32 +175,20 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!updated) {
-      throw new InternalServerErrorException(
-        `Failed to enroll learner in class with ID '${classId}'`
-      );
+      throw new InternalServerErrorException(`Failed to enroll learner in class with ID '${classId}'`);
     }
-
-    // Sync enrollment count for all active assignments in this class
-    await this.assignmentService.syncAllActiveAssignmentsForClass(classId);
 
     return this.mapToDetailDTO(updated);
   }
 
   // Enroll by code
-  async enrollByCode(
-    learnerId: string,
-    dto: EnrollByCodeDTO
-  ): Promise<ClassDetailDTO> {
-    const classs = await this.classRepository.findOne({
-      where: { code: dto.code },
-    });
+  async enrollByCode(learnerId: string, dto: EnrollByCodeDTO): Promise<ClassDetailDTO> {
+    const classs = await this.classRepository.findOne({ where: { code: dto.code } });
     if (!classs) {
       throw new NotFoundException(`Class with code '${dto.code}' not found`);
     }
 
-    const learner = await this.userRepository.findOne({
-      where: { id: learnerId },
-    });
+    const learner = await this.userRepository.findOne({ where: { id: learnerId } });
     if (!learner) {
       throw new NotFoundException(`Learner with ID '${learnerId}' not found`);
     }
@@ -258,36 +211,22 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!updated) {
-      throw new InternalServerErrorException(
-        `Failed to enroll learner in class with code '${dto.code}'`
-      );
+      throw new InternalServerErrorException(`Failed to enroll learner in class with code '${dto.code}'`);
     }
-
-    // Sync enrollment count for all active assignments in this class
-    await this.assignmentService.syncAllActiveAssignmentsForClass(classs.id);
 
     return this.mapToDetailDTO(updated);
   }
 
   // Remove learner
-  async removeLearner(
-    classId: string,
-    dto: RemoveLearnerDTO
-  ): Promise<ClassDetailDTO> {
-    const classs = await this.classRepository.findOne({
-      where: { id: classId },
-    });
+  async removeLearner(classId: string, dto: RemoveLearnerDTO): Promise<ClassDetailDTO> {
+    const classs = await this.classRepository.findOne({ where: { id: classId } });
     if (!classs) {
       throw new NotFoundException(`Class with ID '${classId}' not found`);
     }
 
-    const learner = await this.userRepository.findOne({
-      where: { id: dto.learnerId },
-    });
+    const learner = await this.userRepository.findOne({ where: { id: dto.learnerId } });
     if (!learner) {
-      throw new NotFoundException(
-        `Learner with ID '${dto.learnerId}' not found`
-      );
+      throw new NotFoundException(`Learner with ID '${dto.learnerId}' not found`);
     }
 
     const queryRunner = AppDataSource.createQueryRunner();
@@ -307,22 +246,14 @@ export class ClassService {
       relations: ["teacher", "learners"],
     });
     if (!updated) {
-      throw new InternalServerErrorException(
-        `Failed to remove learner from class with ID '${classId}'`
-      );
+      throw new InternalServerErrorException(`Failed to remove learner from class with ID '${classId}'`);
     }
-
-    // Sync enrollment count for all active assignments in this class
-    await this.assignmentService.syncAllActiveAssignmentsForClass(classId);
 
     return this.mapToDetailDTO(updated);
   }
 
   // Search classes
-  async searchClasses(
-    query: string,
-    limit: number = 10
-  ): Promise<ClassListDTO[]> {
+  async searchClasses(query: string, limit: number = 10): Promise<ClassListDTO[]> {
     const classes = await this.classRepository
       .createQueryBuilder("class")
       .where("class.name ILIKE :query", { query: `%${query}%` })
@@ -346,38 +277,6 @@ export class ClassService {
     return await this.classRepository.count({ where: { teacherId } });
   }
 
-  // Get classes by learner (classes the learner is enrolled in)
-  async getClassesByLearner(
-    learnerId: string,
-    limit: number = 10,
-    offset: number = 0
-  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
-    // Check if learner exists
-    const learner = await this.userRepository.findOne({
-      where: { id: learnerId },
-    });
-    if (!learner) {
-      throw new NotFoundException(`Learner with ID '${learnerId}' not found`);
-    }
-
-    // Query classes through the many-to-many relationship
-    const [classes, total] = await this.classRepository
-      .createQueryBuilder("class")
-      .innerJoin("class.learners", "learner", "learner.id = :learnerId", {
-        learnerId,
-      })
-      .take(limit)
-      .skip(offset)
-      .getManyAndCount();
-
-    return createPaginatedResponse(
-      classes.map((c) => this.mapToListDTO(c)),
-      total,
-      limit,
-      offset
-    );
-  }
-
   // Mappers
   private mapToResponseDTO(classs: Class): ClassResponseDTO {
     return {
@@ -397,6 +296,7 @@ export class ClassService {
       name: classs.name,
       code: classs.code,
       createdAt: classs.createdAt,
+      learnerCount: classs.learners?.length || 0,
     };
   }
 
@@ -412,10 +312,15 @@ export class ClassService {
       teacherEmail: classs.teacher?.email,
       teacherName: classs.teacher?.email.split("@")[0],
       learnerCount: classs.learners?.length || 0,
-      learners: classs.learners?.map((l) => ({
-        id: l.id,
-        email: l.email,
-      })),
+      learners: classs.learners
+        ?.filter(l => l.id !== classs.teacherId)
+        .map((l) => ({
+          id: l.id,
+          email: l.email,
+          firstName: l.firstName,
+          lastName: l.lastName,
+          avatar: l.avatar
+        })),
     };
   }
 }

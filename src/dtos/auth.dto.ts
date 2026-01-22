@@ -7,8 +7,8 @@ import { UserRole } from "../enums";
 /**
  * @example {
  *   "email": "user@example.com",
- *   "password": "password123",
- *   "confirmPassword": "password123",
+ *   "password": "SecurePass123!",
+ *   "confirmPassword": "SecurePass123!",
  *   "firstName": "John",
  *   "lastName": "Doe",
  *   "role": "learner"
@@ -42,7 +42,7 @@ export class RegisterDTO {
 /**
  * @example {
  *   "email": "user@example.com",
- *   "password": "password123"
+ *   "password": "SecurePass123!"
  * }
  */
 export class LoginDTO {
@@ -100,6 +100,8 @@ export class AuthUserDTO {
   role!: UserRole;
   firstName?: string;
   lastName?: string;
+  name?: string;
+  avatar?: string;
 }
 
 /**

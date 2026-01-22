@@ -7,19 +7,27 @@ import { SkillType, AttemptStatus } from "../enums";
 /**
  * @example {
  *   "learnerId": "learner-1",
- *   "assignmentId": "assignment-123"
+ *   "promptId": "prompt-123",
+ *   "skillType": "SPEAKING"
  * }
  */
 export class CreateAttemptDTO {
   /**
-   * ID of the learner (must be enrolled in the assignment's class)
+   * ID of the learner
    */
   learnerId!: string;
 
   /**
-   * ID of the assignment to attempt
+   * ID of the prompt to attempt
    */
-  assignmentId!: string;
+  promptId!: string;
+
+  skillType!: SkillType;
+
+  /**
+   * Optional ID of the assignment this attempt belongs to
+   */
+  assignmentId?: string;
 }
 
 /**
@@ -36,21 +44,50 @@ export class UpdateAttemptDTO {
 
 /**
  * @example {
- *   "content": "This is my written response to the prompt..."
+ *   "responseText": "This is my written response to the prompt...",
+ *   "aiRuleId": "ai-rule-123"
  * }
  */
 export class SubmitAttemptDTO {
   /**
-   * Content/transcript to be scored (text for writing, transcript for speaking)
+   * Response text for writing attempts
+   */
+  responseText?: string;
+
+  /**
+   * Content/transcript to be scored (can be from text or speech-to-text)
    */
   content?: string;
+
+  /**
+   * Optional AI Rule ID to automatically score the attempt with teacher-defined rules
+   */
+  aiRuleId?: string;
+}
+
+/**
+ * @example {
+ *   "score": 7.5,
+ *   "feedback": "Great job, but work on pronunciation."
+ * }
+ */
+export class GradeAttemptDTO {
+  /**
+   * Overall band score (0-9)
+   */
+  score!: number;
+
+  /**
+   * Teacher's feedback comments
+   */
+  feedback!: string;
 }
 
 /**
  * @example {
  *   "id": "attempt-123",
  *   "learnerId": "learner-1",
- *   "assignmentId": "assignment-123",
+ *   "promptId": "prompt-123",
  *   "skillType": "SPEAKING",
  *   "status": "SUBMITTED",
  *   "createdAt": "2024-11-14T10:00:00Z",
@@ -61,19 +98,20 @@ export class SubmitAttemptDTO {
 export class AttemptResponseDTO {
   id!: string;
   learnerId!: string;
-  assignmentId!: string;
+  promptId!: string;
   skillType!: SkillType;
   status!: AttemptStatus;
   createdAt!: Date;
   startedAt?: Date;
   submittedAt?: Date;
   scoredAt?: Date;
+  content?: string;
 }
 
 /**
  * @example {
  *   "id": "attempt-123",
- *   "assignmentId": "assignment-123",
+ *   "promptId": "prompt-123",
  *   "skillType": "SPEAKING",
  *   "status": "SUBMITTED",
  *   "createdAt": "2024-11-14T10:00:00Z",
@@ -82,11 +120,32 @@ export class AttemptResponseDTO {
  */
 export class AttemptListDTO {
   id!: string;
-  assignmentId!: string;
+  promptId!: string;
   skillType!: SkillType;
   status!: AttemptStatus;
   createdAt!: Date;
   submittedAt?: Date;
+  deadline?: Date;
+  title?: string;
+  score?: AttemptScoreResponseDTO;
+}
+
+/**
+ * @example {
+ *   "id": "attempt-123",
+ *   "studentName": "John Doe",
+ *   "assignmentTitle": "Essay 1",
+ *   "status": "SUBMITTED",
+ *   "submittedAt": "2024-11-14T10:10:00Z"
+ * }
+ */
+export class AttemptReviewDTO extends AttemptListDTO {
+  studentName!: string;
+  assignmentTitle!: string;
+  studentEmail?: string;
+  className?: string;
+  assignmentId?: string;
+  classId?: string;
 }
 
 /**
@@ -94,11 +153,11 @@ export class AttemptListDTO {
  * @example {
  *   "id": "attempt-123",
  *   "learnerId": "learner-1",
- *   "assignmentId": "assignment-123",
+ *   "promptId": "prompt-123",
  *   "skillType": "SPEAKING",
  *   "status": "SCORED",
- *   "assignmentTitle": "Speaking Practice: Memorable Journey",
- *   "assignmentDescription": "Describe a memorable journey...",
+ *   "promptContent": "Describe your hometown in 2 minutes",
+ *   "promptDifficulty": "INTERMEDIATE",
  *   "createdAt": "2024-11-14T10:00:00Z",
  *   "startedAt": "2024-11-14T10:05:00Z",
  *   "submittedAt": "2024-11-14T10:10:00Z",
@@ -106,11 +165,16 @@ export class AttemptListDTO {
  * }
  */
 export class AttemptDetailDTO extends AttemptResponseDTO {
-  assignmentTitle?: string;
-  assignmentDescription?: string;
+  promptContent?: string;
+  promptDifficulty?: string;
   media?: AttemptMediaResponseDTO[];
   score?: AttemptScoreResponseDTO;
   feedbacks?: AttemptFeedbackResponseDTO[];
+  studentName?: string;
+  studentEmail?: string;
+  assignmentTitle?: string;
+  assignmentDescription?: string;
+  className?: string;
 }
 
 /**
@@ -141,16 +205,25 @@ export class AttemptMediaResponseDTO {
  * Nested DTO for scores
  * @example {
  *   "id": "score-1",
- *   "scoreMetadata": {"fluency": 7, "pronunciation": 6.5, "lexical": 7.5, "grammar": 7},
+ *   "fluency": 7,
+ *   "pronunciation": 6.5,
+ *   "lexical": 7.5,
+ *   "grammar": 7,
  *   "overallBand": 7,
  *   "feedback": "Good fluency but needs pronunciation improvement"
  * }
  */
 export class AttemptScoreResponseDTO {
   id!: string;
-  scoreMetadata!: Record<string, number>;
+  fluency?: number;
+  pronunciation?: number;
+  lexical!: number;
+  grammar!: number;
+  coherence!: number;
+  taskResponse?: number;
   overallBand!: number;
   feedback!: string;
+  detailedFeedback?: any;
 }
 
 /**

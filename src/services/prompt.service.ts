@@ -50,7 +50,7 @@ export class PromptService {
   async getPromptById(id: string): Promise<PromptDetailDTO> {
     const prompt = await this.promptRepository.findOne({
       where: { id },
-      relations: ["creator", "assignments", "assignments.attempts"],
+      relations: ["creator", "attempts"],
     });
     if (!prompt) {
       throw new NotFoundException(`Prompt with ID '${id}' not found`);
@@ -222,12 +222,6 @@ export class PromptService {
   }
 
   private mapToDetailDTO(prompt: Prompt): PromptDetailDTO {
-    // Count attempts through assignments (Prompt → Assignments → Attempts)
-    const attemptCount = prompt.assignments?.reduce(
-      (count, assignment) => count + (assignment.attempts?.length || 0),
-      0
-    ) || 0;
-
     return {
       id: prompt.id,
       createdBy: prompt.createdBy,
@@ -242,7 +236,7 @@ export class PromptService {
       updatedAt: prompt.updatedAt,
       creatorName: prompt.creator?.email.split("@")[0],
       creatorEmail: prompt.creator?.email,
-      attemptCount,
+      attemptCount: prompt.attempts?.length || 0,
     };
   }
 }

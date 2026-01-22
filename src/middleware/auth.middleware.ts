@@ -4,6 +4,7 @@ import { TokenPayloadDTO } from "../dtos/auth.dto";
 import {
   UnauthorizedException,
   InvalidTokenException,
+  InsufficientPermissionsException,
 } from "../exceptions/auth.exception";
 
 /**
@@ -41,7 +42,7 @@ export async function expressAuthentication(
       // Check scopes/roles if specified
       if (scopes && scopes.length > 0) {
         if (!scopes.includes(decoded.role)) {
-          throw new UnauthorizedException(
+          throw new InsufficientPermissionsException(
             `Insufficient permissions. Required roles: ${scopes.join(", ")}`
           );
         }
@@ -170,7 +171,7 @@ export function requireRole(allowedRoles: string | string[]) {
       const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
       if (!roles.includes(req.user.role)) {
-        throw new UnauthorizedException(
+        throw new InsufficientPermissionsException(
           `This resource requires one of these roles: ${roles.join(", ")}`
         );
       }

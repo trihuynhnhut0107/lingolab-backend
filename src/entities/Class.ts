@@ -15,6 +15,8 @@ import { User } from "./User";
 import { Assignment } from "./Assignment";
 
 @Entity("classes")
+@Index("idx_class_teacher", ["teacherId"])
+@Index("idx_class_code", ["code"], { unique: true, where: 'code IS NOT NULL' })
 export class Class {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -41,7 +43,7 @@ export class Class {
   @ManyToOne(() => User, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "teacherId" })
+  @JoinColumn({ name: "teacher_id" })
   teacher!: User;
 
   @ManyToMany(() => User, (user) => user.enrolledClasses, {

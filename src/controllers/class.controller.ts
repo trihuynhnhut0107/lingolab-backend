@@ -54,6 +54,8 @@ export class ClassController extends Controller {
   @Get("{id}")
   @Response(200, "Class found")
   @Response(404, "Class not found")
+  @Security("bearer")
+  @Authenticated()
   async getClassById(@Path() id: string): Promise<ClassDetailDTO> {
     return await this.classService.getClassById(id);
   }
@@ -62,6 +64,8 @@ export class ClassController extends Controller {
    * Get all classes with pagination
    */
   @Get()
+  @Security("bearer")
+  @Authenticated()
   async getAllClasses(
     @Query() limit: number = 10,
     @Query() offset: number = 0
@@ -73,6 +77,8 @@ export class ClassController extends Controller {
    * Get classes by teacher
    */
   @Get("teacher/{teacherId}")
+  @Security("bearer")
+  @Authenticated() // Or @TeacherOnly() if you want to restrict viewing other's classes, but Authenticated is safer for now if admins view it.
   async getClassesByTeacher(
     @Path() teacherId: string,
     @Query() limit: number = 10,
@@ -80,24 +86,6 @@ export class ClassController extends Controller {
   ): Promise<PaginatedResponseDTO<ClassListDTO>> {
     return await this.classService.getClassesByTeacher(
       teacherId,
-      limit,
-      offset
-    );
-  }
-
-  /**
-   * Get classes by learner (classes the learner is enrolled in)
-   */
-  @Get("learner/{learnerId}")
-  @Response(200, "Classes found")
-  @Response(404, "Learner not found")
-  async getClassesByLearner(
-    @Path() learnerId: string,
-    @Query() limit: number = 10,
-    @Query() offset: number = 0
-  ): Promise<PaginatedResponseDTO<ClassListDTO>> {
-    return await this.classService.getClassesByLearner(
-      learnerId,
       limit,
       offset
     );

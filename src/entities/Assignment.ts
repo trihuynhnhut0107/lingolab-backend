@@ -5,25 +5,27 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  OneToMany,
   Index,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 import { Class } from "./Class";
 import { Prompt } from "./Prompt";
-import { AIRule } from "./AIRule";
-import { Attempt } from "./Attempt";
 import { AssignmentStatus } from "../enums";
+import { Attempt } from "./Attempt";
 
 @Entity("assignments")
+@Index("idx_assignment_class", ["classId"])
+@Index("idx_assignment_prompt", ["promptId"])
+@Index("idx_assignment_status", ["status"])
 export class Assignment {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ type: "uuid" })
+  @Column({ type: "uuid", name: "class_id", nullable: true })
   classId!: string;
 
-  @Column({ type: "uuid" })
+  @Column({ type: "uuid", name: "prompt_id", nullable: true })
   promptId!: string;
 
   @Column({ type: "varchar", length: 255 })
@@ -54,14 +56,11 @@ export class Assignment {
   @Column({ type: "boolean", default: false })
   allowLateSubmission!: boolean;
 
+  @Column({ type: "decimal", precision: 3, scale: 1, default: 0 })
+  averageScore!: number;
+
   @Column({ type: "timestamp", nullable: true })
   lateDeadline?: Date;
-
-  @Column({ type: "uuid", nullable: true })
-  aiRuleId?: string; // Optional AI Rule for automatic scoring
-
-  @Column({ type: "boolean", default: false })
-  enableAIScoring!: boolean; // Enable/disable automatic AI scoring
 
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
@@ -73,21 +72,14 @@ export class Assignment {
   @ManyToOne(() => Class, (classs) => classs.assignments, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "classId" })
+  @JoinColumn({ name: "class_id" })
   class?: Class;
 
   @ManyToOne(() => Prompt, (prompt) => prompt.assignments, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "promptId" })
+  @JoinColumn({ name: "prompt_id" })
   prompt?: Prompt;
-
-  @ManyToOne(() => AIRule, {
-    onDelete: "SET NULL",
-    nullable: true,
-  })
-  @JoinColumn({ name: "aiRuleId" })
-  aiRule?: AIRule;
 
   @OneToMany(() => Attempt, (attempt) => attempt.assignment)
   attempts?: Attempt[];

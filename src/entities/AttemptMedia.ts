@@ -11,6 +11,8 @@ import { Attempt } from "./Attempt";
 import { MediaType } from "../enums";
 
 @Entity("attempt_media")
+@Index("idx_attempt_media_attempt", ["attemptId"])
+@Index("idx_attempt_media_uploaded", ["uploadedAt"])
 export class AttemptMedia {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -47,6 +49,6 @@ export class AttemptMedia {
   @ManyToOne(() => Attempt, (attempt) => attempt.media, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "attemptId" })
+  @JoinColumn({ name: "attempt_id" })
   attempt!: Attempt;
 }

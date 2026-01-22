@@ -104,16 +104,16 @@ export class AttemptController extends Controller {
   }
 
   /**
-   * Get attempts by assignment
+   * Get attempts by prompt
    */
-  @Get("assignment/{assignmentId}")
-  async getAttemptsByAssignment(
-    @Path() assignmentId: string,
+  @Get("prompt/{promptId}")
+  async getAttemptsByPrompt(
+    @Path() promptId: string,
     @Query() limit: number = 10,
     @Query() offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
-    return await this.attemptService.getAttemptsByAssignment(
-      assignmentId,
+    return await this.attemptService.getAttemptsByPrompt(
+      promptId,
       limit,
       offset
     );
@@ -193,6 +193,22 @@ export class AttemptController extends Controller {
   }
 
   /**
+   * Grade an attempt (Teacher)
+   */
+  @Put("{id}/grade")
+  @Response(200, "Attempt graded successfully")
+  @Response(404, "Attempt not found")
+  @Security("bearer")
+  @Authenticated()
+  @TeacherOnly()
+  async gradeAttempt(
+    @Path() id: string,
+    @Body() dto: { score: number; feedback: string } // Using inline interface or import GradeAttemptDTO if exported
+  ): Promise<AttemptResponseDTO> {
+    return await this.attemptService.gradeAttempt(id, dto);
+  }
+
+  /**
    * Get attempt count by learner
    */
   @Get("learner/{learnerId}/count")
@@ -241,4 +257,23 @@ export class AttemptController extends Controller {
     await this.attemptService.deleteAttempt(id);
     this.setStatus(204);
   }
+  /**
+   * Get pending attempts for the authenticated teacher
+   */
+  @Get("teacher/pending")
+  @Security("bearer")
+  @TeacherOnly()
+  @Authenticated()
+  async getPendingTeacherAttempts(
+    @Request() request: AuthRequest,
+    @Query() limit: number = 10,
+    @Query() offset: number = 0
+  ): Promise<PaginatedResponseDTO<AttemptListDTO>> {
+    return await this.attemptService.getTeacherPendingAttempts(
+      request.user!.id,
+      limit,
+      offset
+    );
+  }
+
 }

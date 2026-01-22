@@ -109,11 +109,11 @@ export class UpdateScoreDTO {
 export class ScoreResponseDTO {
   id!: string;
   attemptId!: string;
-  fluency?: number;
-  coherence?: number;
-  pronunciation?: number;
-  lexical?: number;
-  grammar?: number;
+  fluency!: number;
+  coherence!: number;
+  pronunciation!: number;
+  lexical!: number;
+  grammar!: number;
   overallBand!: number;
   feedback!: string;
   detailedFeedback?: Record<string, any>;

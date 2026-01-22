@@ -10,10 +10,13 @@ import {
   Index,
 } from "typeorm";
 import { User } from "./User";
+import { Attempt } from "./Attempt";
 import { Assignment } from "./Assignment";
 import { SkillType, DifficultyLevel } from "../enums";
 
 @Entity("prompts")
+@Index("idx_prompts_skill_difficulty", ["skillType", "difficulty"])
+@Index("idx_prompts_created_by", ["createdBy"])
 export class Prompt {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -58,8 +61,11 @@ export class Prompt {
   @ManyToOne(() => User, (user) => user.prompts, {
     onDelete: "RESTRICT",
   })
-  @JoinColumn({ name: "createdBy" })
+  @JoinColumn({ name: "created_by" })
   creator!: User;
+
+  @OneToMany(() => Attempt, (attempt) => attempt.prompt)
+  attempts?: Attempt[];
 
   @OneToMany(() => Assignment, (assignment) => assignment.prompt)
   assignments?: Assignment[];

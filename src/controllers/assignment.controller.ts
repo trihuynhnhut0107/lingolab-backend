@@ -65,6 +65,55 @@ export class AssignmentController extends Controller {
   }
 
   /**
+   * Get assignments for the logged-in learner
+   */
+  @Get("my-assignments")
+  @Security("bearer")
+  @Response(200, "Assignments retrieved")
+  @Response(401, "Unauthorized")
+  async getLearnerAssignments(
+    @Request() request: AuthRequest,
+    @Query() limit: number = 10,
+    @Query() offset: number = 0
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    const user = request.user;
+    if (!user) {
+      throw new Error("User not found in request");
+    }
+    
+    return await assignmentService.getLearnerAssignments(
+      user.id,
+      limit,
+      offset
+    );
+  }
+
+  /**
+   * Get assignments created by the logged-in teacher
+   */
+  @Get("teacher/my-created")
+  @Security("bearer")
+  @Response(200, "Assignments retrieved")
+  @Response(401, "Unauthorized")
+  @TeacherOnly()
+  async getCreatedAssignments(
+    @Request() request: AuthRequest,
+    @Query() limit: number = 10,
+    @Query() offset: number = 0
+  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
+    const user = request.user;
+    if (!user) {
+      throw new Error("User not found in request");
+    }
+    
+    return await assignmentService.getTeacherAssignments(
+      user.id,
+      limit,
+      offset
+    );
+  }
+
+  /**
    * Get all assignments with pagination
    */
   @Get()
@@ -108,31 +157,17 @@ export class AssignmentController extends Controller {
   }
 
   /**
-   * Get assignments by learner (from classes the learner is enrolled in)
-   */
-  @Get("learner/{learnerId}")
-  @Response(200, "Assignments found")
-  @Response(404, "Learner not found")
-  async getAssignmentsByLearner(
-    @Path() learnerId: string,
-    @Query() limit: number = 10,
-    @Query() offset: number = 0
-  ): Promise<PaginatedResponseDTO<AssignmentListDTO>> {
-    return await assignmentService.getAssignmentsByLearner(
-      learnerId,
-      limit,
-      offset
-    );
-  }
-
-  /**
    * Get assignment by ID
    */
   @Get("{id}")
+  @Security("bearer")
   @Response(200, "Assignment found")
   @Response(404, "Assignment not found")
-  async getAssignmentById(@Path() id: string): Promise<AssignmentDetailDTO> {
-    return await assignmentService.getAssignmentById(id);
+  async getAssignmentById(
+    @Path() id: string,
+    @Request() request: AuthRequest
+  ): Promise<AssignmentDetailDTO> {
+    return await assignmentService.getAssignmentById(id, request.user?.id);
   }
 
   /**
@@ -157,6 +192,8 @@ export class AssignmentController extends Controller {
   ): Promise<AssignmentStudentSubmissionDTO[]> {
     return await assignmentService.getStudentSubmissions(id);
   }
+
+
 
   /**
    * Update assignment details
@@ -211,5 +248,23 @@ export class AssignmentController extends Controller {
   async deleteAssignment(@Path() id: string): Promise<void> {
     await assignmentService.deleteAssignment(id);
     this.setStatus(204);
+  }
+
+  /**
+   * ADMIN/DEBUG: Recalculate stats for all assignments
+   * Helpful if stats get out of sync
+   */
+  @Post("admin/recalculate-all")
+  @Response(200, "Recalculation started")
+  async recalculateAllStats(): Promise<{ message: string }> {
+     // This could be heavy, so maybe don't await everything if many assignments
+     // But for now, simple await is fine for this user scale
+     const assignments = await assignmentService.getAllAssignments(1000, 0); // Fetch up to 1000
+     let count = 0;
+     for (const a of assignments.data) {
+         await assignmentService.updateAssignmentStats(a.id);
+         count++;
+     }
+     return { message: `Recalculated stats for ${count} assignments` };
   }
 }

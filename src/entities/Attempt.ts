@@ -10,14 +10,18 @@ import {
   Index,
 } from "typeorm";
 import { User } from "./User";
-import { Assignment } from "./Assignment";
+import { Prompt } from "./Prompt";
 import { AttemptMedia } from "./AttemptMedia";
 import { ScoringJob } from "./ScoringJob";
 import { Score } from "./Score";
 import { Feedback } from "./Feedback";
+import { Assignment } from "./Assignment";
 import { SkillType, AttemptStatus } from "../enums";
 
 @Entity("attempts")
+@Index("idx_attempts_learner_created", ["learnerId", "createdAt"])
+@Index("idx_attempts_prompt", ["promptId"])
+@Index("idx_attempts_status", ["status"])
 export class Attempt {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -26,7 +30,7 @@ export class Attempt {
   learnerId!: string;
 
   @Column({ type: "uuid" })
-  assignmentId!: string;
+  promptId!: string;
 
   @Column({
     type: "enum",
@@ -60,12 +64,16 @@ export class Attempt {
   @ManyToOne(() => User, (user) => user.attempts, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "learnerId" })
+  @JoinColumn({ name: "learner_id" })
   learner!: User;
 
+  @ManyToOne(() => Prompt, (prompt) => prompt.attempts)
+  @JoinColumn({ name: "prompt_id" })
+  prompt!: Prompt;
+
   @ManyToOne(() => Assignment, (assignment) => assignment.attempts)
-  @JoinColumn({ name: "assignmentId" })
-  assignment!: Assignment;
+  @JoinColumn({ name: "assignment_id" })
+  assignment?: Assignment;
 
   @OneToMany(() => AttemptMedia, (media) => media.attempt)
   media?: AttemptMedia[];

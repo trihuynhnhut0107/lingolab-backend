@@ -5,20 +5,11 @@
   "spec": {
     "outputDirectory": "src",
     "specVersion": 3,
-    "basePath": "/api",
     "name": "LingoLab API",
     "description": "LingoLab Backend API Documentation",
     "version": "1.0.0",
     "contact": {
       "name": "LingoLab"
-    },
-    "securityDefinitions": {
-      "bearer": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Enter your JWT token"
-      }
     }
   },
   "routes": {
