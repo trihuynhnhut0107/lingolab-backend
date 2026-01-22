@@ -1,5 +1,5 @@
 import { AppDataSource } from "../data-source";
-import { In } from "typeorm";
+import { In, IsNull } from "typeorm";
 import {
   CreateAttemptDTO,
   UpdateAttemptDTO,
@@ -55,6 +55,25 @@ export class AttemptService {
 
     if (existingAttempt) {
         return this.mapToResponseDTO(existingAttempt);
+    }
+    
+    // Fallback: If strict match failed but assignmentId is provided, try to find an orphaned attempt for this prompt
+    if (dto.assignmentId) {
+         const orphanedAttempt = await this.attemptRepository.findOne({
+             where: {
+                 learnerId: dto.learnerId,
+                 prompt: { id: dto.promptId },
+                 assignment: IsNull()
+             },
+             relations: ['score', 'feedbacks', 'assignment', 'prompt']
+         });
+         
+         if (orphanedAttempt) {
+             console.log(`[AttemptService] Found orphaned attempt ${orphanedAttempt.id}. Linking to assignment ${dto.assignmentId}`);
+             orphanedAttempt.assignment = { id: dto.assignmentId } as any; // Cast to avoid type issues with partial
+             await this.attemptRepository.save(orphanedAttempt);
+             return this.mapToResponseDTO(orphanedAttempt);
+         }
     }
 
     const attempt = this.attemptRepository.create({
@@ -215,40 +234,30 @@ export class AttemptService {
     limit: number = 10,
     offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptReviewDTO>> {
-    // Fetch pending attempts (Submitted or AI Scored but not confirmed by teacher)
+    // Fetch pending attempts (Only SUBMITTED, as SCORED means either AI or Teacher has graded it)
+    console.log(`[AttemptService] getTeacherPendingAttempts for teacher ${teacherId}`);
     const [attempts, total] = await this.attemptRepository.findAndCount({
       where: {
-        status: In([AttemptStatus.SUBMITTED, AttemptStatus.SCORED]),
+        status: AttemptStatus.SUBMITTED,
         assignment: {
           class: {
             teacherId: teacherId
           }
         }
       },
-      relations: ["prompt", "learner", "assignment", "assignment.class", "score"],
+      relations: ["prompt", "learner", "assignment", "assignment.class"],
       order: {
         submittedAt: "DESC"
       },
-      // Note: We're filtering in memory for 'gradedByTeacher', so we fetch a bit more to compensate or accept partial pages
-      // Ideally this should use a Raw query for JSON filtering
-      take: limit * 2, 
+      take: limit, 
       skip: offset
     });
+    console.log(`[AttemptService] Found ${total} pending assignments for teacher ${teacherId}`);
 
-    // Filter out attempts that have been manually graded by the teacher
-    const pendingAttempts = attempts.filter(a => {
-        if (a.status === AttemptStatus.SUBMITTED) return true;
-        // If scored, check if graded by teacher
-        if (a.status === AttemptStatus.SCORED) {
-            return !a.score?.detailedFeedback?.gradedByTeacher;
-        }
-        return false;
-    });
+    const pendingAttempts = attempts;
 
-    // Apply limit manually after filter
-    const paginatedAttempts = pendingAttempts.slice(0, limit);
-    // Adjusted total estimate (not perfect but better than raw total)
-    const adjustedTotal = total - (attempts.length - pendingAttempts.length);
+    const paginatedAttempts = attempts;
+    const adjustedTotal = total;
   
     return createPaginatedResponse(
       paginatedAttempts.map((a) => {
@@ -309,38 +318,53 @@ export class AttemptService {
 
     // Update attempt status to SUBMITTED
     // Resolve content from DTO or fallback to existing content
-    const content = dto.content || dto.responseText || attempt.content || "";
+    // Debug Logging
+    console.log(`[AttemptService.submitAttempt] ID: ${id}`);
+    console.log(`[AttemptService.submitAttempt] DTO Content: ${dto.content ? dto.content.substring(0, 50) + "..." : "undefined"}`);
+    console.log(`[AttemptService.submitAttempt] DTO ResponseText: ${dto.responseText ? dto.responseText.substring(0, 50) + "..." : "undefined"}`);
     
-    await this.attemptRepository.update(id, {
-      status: AttemptStatus.SUBMITTED,
-      submittedAt: new Date(),
-      content: content,
+    const content = dto.content || dto.responseText || attempt.content || "";
+    console.log(`[AttemptService.submitAttempt] Final Content to Save: ${content ? content.substring(0, 50) + "..." : "EMPTY STRING"}`);
+
+    // Use save() instead of update() for better reliability and return value
+    attempt.status = AttemptStatus.SUBMITTED;
+    attempt.submittedAt = new Date();
+    attempt.content = content;
+
+    const savedAttempt = await this.attemptRepository.save(attempt);
+
+    // Fire-and-forget AI evaluation
+    // Pass 'savedAttempt' content to be sure
+    this.handleAIEvaluation(id, attempt.skillType, savedAttempt.content || "", attempt.assignment, attempt.prompt).catch(err => {
+        console.error(`[Background] AI Evaluation failed for attempt ${id}:`, err);
     });
 
-    // Gemini AI Evaluation for Audio (Speaking Tasks)
-    console.log(`[DEBUG] AttemptID: ${id}, Skill: ${attempt.skillType}, Content Length: ${content?.length}`);
-    
-    if (attempt.skillType === 'speaking' && content.startsWith("http")) {
+    // Return the saved attempt directly
+    return this.mapToResponseDTO(savedAttempt);
+  }
+
+  // Helper for async AI evaluation
+  private async handleAIEvaluation(attemptId: string, skillType: SkillType, content: string, assignment?: any, prompt?: any) {
+    if (skillType === 'speaking' && content.startsWith("http")) {
        try {
-          console.log(`Evaluating audio with Gemini for attempt ${id}: ${content}`);
+          console.log(`Evaluating audio with Gemini for attempt ${attemptId}: ${content}`);
           
-          const description = attempt.assignment?.description ? `Context: ${attempt.assignment.description}\n` : "";
-          const promptContent = attempt.prompt?.content || "No prompt provided";
+          const description = assignment?.description ? `Context: ${assignment.description}\n` : "";
+          const promptContent = prompt?.content || "No prompt provided";
           const fullContext = `${description}Topic: ${promptContent}`;
 
-          // geminiService is imported at top
           const scoreResponse = await geminiService.evaluateAudio(content, fullContext);
           console.log("Gemini Response:", JSON.stringify(scoreResponse, null, 2));
 
           const score = this.scoreRepository.create({
-              attemptId: id,
+              attemptId: attemptId,
               fluency: scoreResponse.fluency,
               coherence: scoreResponse.coherence,
               lexical: scoreResponse.lexical,
               grammar: scoreResponse.grammar,
               pronunciation: scoreResponse.pronunciation,
               overallBand: scoreResponse.overallBand,
-              feedback: scoreResponse.feedback.issues + "\n\n" + scoreResponse.feedback.actions, // Summarize text feedback
+              feedback: scoreResponse.feedback.issues + "\n\n" + scoreResponse.feedback.actions,
               detailedFeedback: {
                   ...scoreResponse.feedback,
                   transcript: scoreResponse.transcript,
@@ -354,29 +378,30 @@ export class AttemptService {
           });
           await this.scoreRepository.save(score);
 
-          await this.attemptRepository.update(id, {
+          await this.attemptRepository.update(attemptId, {
               status: AttemptStatus.SCORED,
               scoredAt: new Date()
           });
-          console.log(`Attempt ${id} automatically scored by Gemini (Speaking)`);
+          console.log(`Attempt ${attemptId} automatically scored by Gemini (Speaking)`);
+          
+          // Update stats
+          if (assignment?.id) await assignmentService.updateAssignmentStats(assignment.id);
 
        } catch (error) {
            console.error("Gemini evaluation failed", error);
-           // Do not throw, allow submission to succeed even if AI fails
        }
-    } else if (attempt.skillType === SkillType.WRITING && content) {
+    } else if (skillType === SkillType.WRITING && content) {
        try {
-
-          console.log(`Evaluating writing with Gemini for attempt ${id}`);
+          console.log(`Evaluating writing with Gemini for attempt ${attemptId}`);
           
-          const description = attempt.assignment?.description ? `Context: ${attempt.assignment.description}\n` : "";
-          const promptContent = attempt.prompt?.content || "No prompt provided";
+          const description = assignment?.description ? `Context: ${assignment.description}\n` : "";
+          const promptContent = prompt?.content || "No prompt provided";
           const fullContext = `${description}Topic: ${promptContent}`;
           
           const scoreResponse = await geminiService.evaluateWriting(content, fullContext);
           
           const score = this.scoreRepository.create({
-              attemptId: id,
+              attemptId: attemptId,
               taskResponse: scoreResponse.taskResponse,
               coherence: scoreResponse.coherence,
               lexical: scoreResponse.lexical,
@@ -395,56 +420,19 @@ export class AttemptService {
           });
           await this.scoreRepository.save(score);
 
-          await this.attemptRepository.update(id, {
+          await this.attemptRepository.update(attemptId, {
               status: AttemptStatus.SCORED,
               scoredAt: new Date()
           });
-          console.log(`Attempt ${id} automatically scored by Gemini (Writing)`);
+          console.log(`Attempt ${attemptId} automatically scored by Gemini (Writing)`);
+          
+          // Update stats
+          if (assignment?.id) await assignmentService.updateAssignmentStats(assignment.id);
+
        } catch (error) {
            console.error("Gemini writing evaluation failed", error);
        }
     }
-    // Legacy OpenAI/Langchain Logic (Only runs if aiRuleId provided AND not already handled by Gemini)
-    else if (dto.aiRuleId) {
-      try {
-        const aiRule = await aiRuleService.getAIRuleById(dto.aiRuleId);
-        const scoreResponse = await langchainService.scoreIELTSSpeaking(
-          dto.content || attempt.content || "",
-          aiRule
-        );
-
-        // Create score record
-        const score = this.scoreRepository.create({
-          attemptId: id,
-          fluency: scoreResponse.fluency,
-          coherence: scoreResponse.coherence,
-          lexical: scoreResponse.lexical,
-          grammar: scoreResponse.grammar,
-          pronunciation: scoreResponse.pronunciation,
-          overallBand: scoreResponse.overallBand,
-          feedback: JSON.stringify(scoreResponse.feedback),
-          detailedFeedback: scoreResponse.feedback,
-        });
-        await this.scoreRepository.save(score);
-
-        // Update attempt status to SCORED
-        await this.attemptRepository.update(id, {
-          status: AttemptStatus.SCORED,
-        });
-      } catch (error: any) {
-        // Log the error but don't fail the submission
-        console.error(`AI scoring failed for attempt ${id}:`, error.message);
-        // Keep the attempt in SUBMITTED status if scoring fails
-      }
-    }
-
-
-    const updated = await this.attemptRepository.findOne({ where: { id } });
-    if (!updated) {
-      throw new InternalServerErrorException(`Failed to submit attempt with ID '${id}'`);
-    }
-
-    return this.mapToResponseDTO(updated);
   }
 
   // Grade attempt (Teacher)

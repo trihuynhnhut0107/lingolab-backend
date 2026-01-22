@@ -168,6 +168,7 @@ export class AssignmentListDTO {
   deadline!: Date;
   status!: AssignmentStatus;
   totalSubmitted!: number;
+  totalScored!: number;
   totalEnrolled!: number;
   className?: string;
   submissionStatus?: string;
@@ -213,4 +214,5 @@ export class AssignmentStudentSubmissionDTO {
   status!: string;
   submittedAt?: Date;
   score?: number;
+  attemptId?: string;
 }

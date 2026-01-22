@@ -66,18 +66,50 @@ export class GeminiService {
     });
   }
 
+  /**
+   * Transform Cloudinary URL to request MP3 format
+   * Cloudinary supports format transformation via URL manipulation
+   */
+  private transformToMP3Url(url: string): string {
+    // Check if it's a Cloudinary URL
+    if (url.includes('cloudinary.com')) {
+      // Cloudinary URL pattern: .../upload/v123456/filename.ext
+      // Transform to: .../upload/f_mp3/v123456/filename.mp3
+      
+      // Insert format transformation parameter
+      const transformed = url.replace('/upload/', '/upload/f_mp3,q_auto/');
+      
+      // Also change the file extension to .mp3
+      const mp3Url = transformed.replace(/\.(webm|wav|m4a|ogg)$/i, '.mp3');
+      
+      console.log(`[GeminiService] Transformed URL: ${url} -> ${mp3Url}`);
+      return mp3Url;
+    }
+    
+    // If not Cloudinary, return as-is
+    return url;
+  }
+
   async evaluateAudio(audioUrl: string, promptText?: string): Promise<AIScoreResponse> {
     try {
+      // Transform URL to MP3 format if it's a Cloudinary URL
+      const mp3Url = this.transformToMP3Url(audioUrl);
+      
       // 1. Fetch audio buffer from URL
-      const response = await axios.get(audioUrl, { responseType: "arraybuffer" });
+      const response = await axios.get(mp3Url, { responseType: "arraybuffer" });
       const audioBuffer = Buffer.from(response.data);
       const base64Audio = audioBuffer.toString("base64");
+      console.log(`[GeminiService] Audio Buffer Size: ${audioBuffer.length} bytes, Base64 Length: ${base64Audio.length}`);
+
+      // Force MP3 MIME type for Gemini
+      const mimeType = "audio/mp3";
+      console.log(`[GeminiService] Using MIME Type: ${mimeType}`);
 
       // 2. Prepare Part
       const audioPart = {
         inlineData: {
           data: base64Audio,
-          mimeType: "audio/mp3", // Assuming MP3, but Gemini is flexible. Ideally detect mime type.
+          mimeType: mimeType, 
         },
       };
 

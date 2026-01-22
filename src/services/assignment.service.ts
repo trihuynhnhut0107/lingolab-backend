@@ -68,13 +68,51 @@ export class AssignmentService {
         let myAttempt: Attempt | null = null;
         if (learnerId) {
             try {
-                myAttempt = await this.attemptRepository.findOne({
-                    where: {
-                        assignment: { id: id },
-                        learnerId: learnerId
-                    },
-                    relations: ['score', 'feedbacks']
+                console.log(`[AssignmentService] Fetching attempt for Assignment: ${id}, Learner: ${learnerId}`);
+                
+                // Fetch ALL potential candidates: Linked to Assignment OR Linked to Prompt (orphaned)
+                const candidates = await this.attemptRepository.find({
+                   where: [
+                       { assignment: { id: id }, learnerId: learnerId },
+                       { prompt: { id: assignment.promptId }, learnerId: learnerId }
+                   ],
+                   relations: ['score', 'feedbacks', 'assignment', 'prompt']
                 });
+
+                if (candidates.length > 0) {
+                     // Rank candidates to find the "best" one
+                     // Priority: SCORED > SUBMITTED > IN_PROGRESS
+                     // If equal status: Most recent updatedAt
+                     const statusWeight = {
+                         [AttemptStatus.SCORED]: 3,
+                         [AttemptStatus.SUBMITTED]: 2,
+                         [AttemptStatus.IN_PROGRESS]: 1
+                     };
+
+                     candidates.sort((a, b) => {
+                         const weightA = statusWeight[a.status] || 0;
+                         const weightB = statusWeight[b.status] || 0;
+                         if (weightA !== weightB) return weightB - weightA; // Higher weight first
+                         
+                         // Tie-breaker: Recency
+                         // Use submittedAt, scoredAt, startedAt, or createdAt
+                         const dateA = new Date(a.scoredAt || a.submittedAt || a.startedAt || a.createdAt).getTime();
+                         const dateB = new Date(b.scoredAt || b.submittedAt || b.startedAt || b.createdAt).getTime();
+                         return dateB - dateA; // Newer first
+                     });
+                     
+                     myAttempt = candidates[0];
+                     console.log(`[AssignmentService] Selected best attempt: ${myAttempt.id} (Status: ${myAttempt.status}, Linked: ${!!myAttempt.assignment})`);
+                     
+                     // Self-healing: If the best attempt is orphaned, link it now
+                     if (!myAttempt.assignment) {
+                         console.log(`[AssignmentService] Self-healing: Linking attempt ${myAttempt.id} to assignment ${id}`);
+                         // Cast to any to avoid partial update issues if strict typing complains
+                         await this.attemptRepository.update(myAttempt.id, { assignment: { id: id } } as any);
+                     }
+                } else {
+                    console.log(`[AssignmentService] No attempts found.`);
+                }
             } catch (attemptError) {
                 console.error(`[AssignmentService] Failed to fetch attempt:`, attemptError);
                 // Don't fail the whole request if attempt fetch fails, just log it
@@ -178,17 +216,61 @@ export class AssignmentService {
     let attemptMap = new Map<string, Attempt>();
     if (assignments.length > 0) {
         const assignmentIds = assignments.map(a => a.id);
+        const promptIds = assignments.map(a => a.promptId).filter(id => !!id);
+
         const attempts = await this.attemptRepository.find({
-            where: {
-                learnerId: learnerId,
-                assignment: { id: In(assignmentIds) }
-            },
-            relations: ['assignment', 'score']
+            where: [
+                {
+                    learnerId: learnerId,
+                    assignment: { id: In(assignmentIds) }
+                },
+                {
+                    learnerId: learnerId,
+                    prompt: { id: In(promptIds) }
+                }
+            ],
+            relations: ['assignment', 'prompt', 'score']
         });
         
-        attempts.forEach(a => {
-            if (a.assignment?.id) attemptMap.set(a.assignment.id, a);
-        });
+        // Map attempts to assignments
+        // Pool all candidates (linked or compatible unlinked) and pick the best one
+        const statusWeight = {
+             [AttemptStatus.SCORED]: 3,
+             [AttemptStatus.SUBMITTED]: 2,
+             [AttemptStatus.IN_PROGRESS]: 1
+        };
+
+        for (const assignment of assignments) {
+             // Find all candidates for this assignment
+             const candidates = attempts.filter(a => {
+                 const isLinked = a.assignment?.id === assignment.id;
+                 const isCompatibleOrphan = a.prompt?.id === assignment.promptId && (!a.assignment || a.assignment.id === assignment.id);
+                 return isLinked || isCompatibleOrphan;
+             });
+
+             if (candidates.length > 0) {
+                 console.log(`[DEBUG] Found ${candidates.length} candidates for Assignment ${assignment.title} (${assignment.id})`);
+                 candidates.forEach(c => console.log(` - Candidate: ${c.id} Status: ${c.status} Created: ${c.createdAt} Scored: ${c.scoredAt}`));
+                 candidates.sort((a, b) => {
+                     // 1. Status Priority
+                     const weightA = statusWeight[a.status] || 0;
+                     const weightB = statusWeight[b.status] || 0;
+                     if (weightA !== weightB) return weightB - weightA;
+                     
+                     // 2. Recency
+                     const dateA = new Date(a.scoredAt || a.submittedAt || a.startedAt || a.createdAt).getTime();
+                     const dateB = new Date(b.scoredAt || b.submittedAt || b.startedAt || b.createdAt).getTime();
+                     return dateB - dateA;
+                 });
+
+                 const bestAttempt = candidates[0];
+                 console.log(`[DEBUG] Selected Best Attempt for ${assignment.title}: ${bestAttempt.id} (Status: ${bestAttempt.status})`);
+                 attemptMap.set(assignment.id, bestAttempt);
+                 
+                 // Self-healing (lite): distinct from getAssignmentById, we might not want to write to DB during a list reading operation for perf, 
+                 // but we can at least show the right status.
+             }
+        }
     }
 
     return {
@@ -326,6 +408,7 @@ export class AssignmentService {
       status: attempt.status,
       submittedAt: attempt.submittedAt,
       score: attempt.score?.overallBand,
+      attemptId: attempt.id,
     }));
   }
 
@@ -375,6 +458,7 @@ export class AssignmentService {
       totalEnrolled: assignment.totalEnrolled,
       totalSubmitted: assignment.totalSubmitted,
       totalScored: assignment.totalScored,
+      averageScore: Number(assignment.averageScore),
       allowLateSubmission: assignment.allowLateSubmission,
       lateDeadline: assignment.lateDeadline,
       createdAt: assignment.createdAt,
@@ -403,6 +487,7 @@ export class AssignmentService {
       deadline: assignment.deadline,
       status: assignment.status,
       totalSubmitted: assignment.totalSubmitted,
+      totalScored: assignment.totalScored,
       totalEnrolled: assignment.totalEnrolled,
       averageScore: Number(assignment.averageScore),
       className: assignment.class?.name,
@@ -425,6 +510,7 @@ export class AssignmentService {
       where: {
         assignment: { id: assignmentId },
       },
+      relations: ["score"], // Needed for average score calc
     });
 
     const totalSubmitted = attempts.filter(
