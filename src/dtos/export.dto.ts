@@ -132,12 +132,13 @@ export class AttemptDetailRowDTO {
   attemptDate!: Date;
   submittedDate?: Date;
   status!: "in_progress" | "submitted" | "scored";
-  overallBand?: number;
-  fluency?: number;
-  coherence?: number;
-  lexical?: number;
-  grammar?: number;
-  pronunciation?: number;
+  overallBand?: number | null;
+  fluency?: number | null;
+  coherence?: number | null;
+  lexical?: number | null;
+  grammar?: number | null;
+  pronunciation?: number | null;
+  taskResponse?: number | null;
 }
 
 /**

@@ -170,6 +170,7 @@ export class ExportService {
         lexical: attempt.score?.lexical,
         grammar: attempt.score?.grammar,
         pronunciation: attempt.score?.pronunciation,
+        taskResponse: attempt.score?.taskResponse,
       }));
 
     return {
@@ -251,6 +252,7 @@ export class ExportService {
       "Lexical",
       "Grammar",
       "Pronunciation",
+      "Task Response",
     ];
 
     const rows = data.attemptDetails.map((detail) => [
@@ -265,6 +267,7 @@ export class ExportService {
       detail.lexical?.toFixed(2) || "",
       detail.grammar?.toFixed(2) || "",
       detail.pronunciation?.toFixed(2) || "",
+      detail.taskResponse?.toFixed(2) || "",
     ]);
 
     const csv = [

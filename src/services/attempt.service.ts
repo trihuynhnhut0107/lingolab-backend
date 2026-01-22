@@ -1,5 +1,5 @@
 import { AppDataSource } from "../data-source";
-import { In, IsNull } from "typeorm";
+import { In, IsNull, Brackets } from "typeorm";
 import {
   CreateAttemptDTO,
   UpdateAttemptDTO,
@@ -234,33 +234,35 @@ export class AttemptService {
     limit: number = 10,
     offset: number = 0
   ): Promise<PaginatedResponseDTO<AttemptReviewDTO>> {
-    // Fetch pending attempts (Only SUBMITTED, as SCORED means either AI or Teacher has graded it)
     console.log(`[AttemptService] getTeacherPendingAttempts for teacher ${teacherId}`);
-    const [attempts, total] = await this.attemptRepository.findAndCount({
-      where: {
-        status: AttemptStatus.SUBMITTED,
-        assignment: {
-          class: {
-            teacherId: teacherId
-          }
-        }
-      },
-      relations: ["prompt", "learner", "assignment", "assignment.class"],
-      order: {
-        submittedAt: "DESC"
-      },
-      take: limit, 
-      skip: offset
-    });
+    
+    // Use QueryBuilder to handle complex OR logic with relations
+    const builder = this.attemptRepository.createQueryBuilder("attempt")
+      .leftJoinAndSelect("attempt.assignment", "assignment")
+      .leftJoinAndSelect("assignment.class", "class")
+      .leftJoinAndSelect("attempt.learner", "learner")
+      .leftJoinAndSelect("attempt.prompt", "prompt")
+      .leftJoinAndSelect("attempt.score", "score")
+      .where("class.teacherId = :teacherId", { teacherId })
+      .andWhere(new Brackets(qb => {
+        // Include SUBMITTED (waiting for ANY grading)
+        qb.where("attempt.status = :submitted", { submitted: AttemptStatus.SUBMITTED })
+          // OR SCORED (AI graded) but NOT "gradedByTeacher"
+          .orWhere(new Brackets(subQb => {
+              subQb.where("attempt.status = :scored", { scored: AttemptStatus.SCORED })
+                   .andWhere("score.detailedFeedback ->> 'gradedByTeacher' IS DISTINCT FROM 'true'");
+          }));
+      }))
+      .orderBy("attempt.submittedAt", "DESC")
+      .take(limit)
+      .skip(offset);
+
+    const [attempts, total] = await builder.getManyAndCount();
+    
     console.log(`[AttemptService] Found ${total} pending assignments for teacher ${teacherId}`);
 
-    const pendingAttempts = attempts;
-
-    const paginatedAttempts = attempts;
-    const adjustedTotal = total;
-  
     return createPaginatedResponse(
-      paginatedAttempts.map((a) => {
+      attempts.map((a) => {
         const studentName = a.learner?.firstName || a.learner?.lastName
           ? `${a.learner.firstName || ''} ${a.learner.lastName || ''}`.trim()
           : a.learner?.email || "Unknown Student";
@@ -279,7 +281,7 @@ export class AttemptService {
           assignmentTitle
         };
       }),
-      adjustedTotal,
+      total,
       limit,
       offset
     );
@@ -550,10 +552,12 @@ export class AttemptService {
       title: attempt.assignment?.title || attempt.prompt?.description || attempt.prompt?.content?.substring(0, 30) || "Untitled Task",
       score: attempt.score ? {
           id: attempt.score.id,
-          fluency: Number(attempt.score.fluency),
-          pronunciation: Number(attempt.score.pronunciation),
+          fluency: attempt.score.fluency !== null ? Number(attempt.score.fluency) : undefined,
+          pronunciation: attempt.score.pronunciation !== null ? Number(attempt.score.pronunciation) : undefined,
           lexical: Number(attempt.score.lexical),
           grammar: Number(attempt.score.grammar),
+          coherence: Number(attempt.score.coherence),
+          taskResponse: attempt.score.taskResponse !== null ? Number(attempt.score.taskResponse) : undefined,
           overallBand: attempt.score.overallBand,
           feedback: attempt.score.feedback,
       } : undefined
@@ -585,19 +589,18 @@ export class AttemptService {
         uploadedAt: m.uploadedAt,
       })),
       score: attempt.score
-        ? (() => {
-            console.log("Mapping Score Details:", attempt.score);
-            return {
+        ? {
             id: attempt.score.id,
-            fluency: Number(attempt.score.fluency),
-            pronunciation: Number(attempt.score.pronunciation),
+            fluency: attempt.score.fluency !== null ? Number(attempt.score.fluency) : undefined,
+            pronunciation: attempt.score.pronunciation !== null ? Number(attempt.score.pronunciation) : undefined,
             lexical: Number(attempt.score.lexical),
             grammar: Number(attempt.score.grammar),
+            coherence: Number(attempt.score.coherence),
+            taskResponse: attempt.score.taskResponse !== null ? Number(attempt.score.taskResponse) : undefined,
             overallBand: attempt.score.overallBand,
             feedback: attempt.score.feedback,
             detailedFeedback: attempt.score.detailedFeedback,
-          };
-        })()
+          }
         : undefined,
       feedbacks: attempt.feedbacks?.map((f) => ({
         id: f.id,

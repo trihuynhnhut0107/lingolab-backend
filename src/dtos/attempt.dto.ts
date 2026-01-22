@@ -215,10 +215,12 @@ export class AttemptMediaResponseDTO {
  */
 export class AttemptScoreResponseDTO {
   id!: string;
-  fluency!: number;
-  pronunciation!: number;
+  fluency?: number;
+  pronunciation?: number;
   lexical!: number;
   grammar!: number;
+  coherence!: number;
+  taskResponse?: number;
   overallBand!: number;
   feedback!: string;
   detailedFeedback?: any;

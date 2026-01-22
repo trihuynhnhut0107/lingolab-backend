@@ -183,18 +183,36 @@ export class GeminiService {
         "${text}"
         
         Task:
-        1. Evaluate the writing performance based on official IELTS Writing criteria (Task Response, Coherence & Cohesion, Lexical Resource, Grammatical Range & Accuracy).
-        2. Provide detailed feedback.
+        1. Evaluate the writing performance based on official IELTS Writing criteria:
+           - Task Response
+           - Coherence & Cohesion
+           - Lexical Resource
+           - Grammatical Range & Accuracy
+        2. Provide discrete scores for EACH criterion (0.0 - 9.0 in 0.5 increments).
+        3. Calculate overallBand as the exact average of the four scores, rounded to the nearest 0.5.
+        4. Provide detailed feedback.
         
         Output must be strictly JSON matching the schema provided.
-        Score from 0.0 to 9.0 (0.5 increments allowed).
+        ENSURE "taskResponse", "coherence", "lexical", and "grammar" are all present and non-null.
       `;
 
       const result = await writingModel.generateContent(prompt);
       const responseText = result.response.text();
       
-      const parsed = JSON.parse(responseText);
-      return parsed as AIWritingScoreResponse;
+      console.log(`[GeminiService] Writing Evaluation Raw Response: ${responseText}`);
+
+      const parsed = JSON.parse(responseText) as AIWritingScoreResponse;
+
+      // Validation
+      const requiredFields = ['taskResponse', 'coherence', 'lexical', 'grammar'];
+      const missingFields = requiredFields.filter(field => parsed[field as keyof AIWritingScoreResponse] === undefined);
+      
+      if (missingFields.length > 0) {
+          console.warn(`[GeminiService] Warning: Missing fields in AI response: ${missingFields.join(', ')}`);
+          // Could implement fallback or re-try here if critical
+      }
+
+      return parsed;
     } catch (error) {
       console.error("Gemini Writing Evaluation Failed:", error);
       throw new InternalServerErrorException("Failed to evaluate writing with AI");
