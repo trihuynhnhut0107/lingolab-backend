@@ -37,7 +37,8 @@ export class LangchainService {
    */
   async scoreIELTSSpeaking(
     transcript: string,
-    aiRule: AIRule
+    aiRule: AIRule,
+    promptContent?: string
   ): Promise<AIScoreResponse> {
     // Create the prompt template with LangChain
     const promptTemplate = PromptTemplate.fromTemplate(`You are an IELTS Speaking examiner.
@@ -45,14 +46,16 @@ export class LangchainService {
 Use the official IELTS Speaking Public Band Descriptors.
 
 Apply the following teacher-defined scoring rule:
-- Fluency weight: {fluency_weight}
-- Coherence weight: {coherence_weight}
+- Fluency & Coherence weight: {fluency_weight}
 - Lexical Resource weight: {lexical_weight}
 - Grammatical Range & Accuracy weight: {grammar_weight}
 - Pronunciation weight: {pronunciation_weight}
 - Strictness multiplier: {strictness}
 
 Rubric: {rubric_id}
+
+Prompt/Question:
+{prompt_content}
 
 Evaluate the student's performance based on the transcript below:
 
@@ -75,7 +78,6 @@ Return JSON with this exact structure:
 {
   "overallBand": number,
   "fluency": number,
-  "coherence": number,
   "lexical": number,
   "grammar": number,
   "pronunciation": number,
@@ -98,13 +100,14 @@ Return JSON with this exact structure:
     // Execute the chain with the AI rule configuration
     const result = await chain.invoke({
       fluency_weight: weights.fluency,
-      coherence_weight: weights.coherence,
+      // coherence_weight removed/merged
       lexical_weight: weights.lexical,
       grammar_weight: weights.grammar,
       pronunciation_weight: weights.pronunciation || 0.2,
       strictness: aiRule.strictness,
       rubric_id: aiRule.rubricId,
       transcript,
+      prompt_content: promptContent || "No specific prompt provided.",
     });
 
     // Validate the response structure
@@ -114,10 +117,84 @@ Return JSON with this exact structure:
   }
 
   /**
+   * Score an IELTS writing submission (Task 1 or Task 2)
+   */
+  async scoreIELTSWriting(
+    submissionText: string,
+    aiRule: AIRule,
+    promptContent?: string
+  ): Promise<any> {
+    const promptTemplate = PromptTemplate.fromTemplate(`You are an IELTS Writing examiner.
+
+Use the official IELTS Writing Band Descriptors.
+
+Apply the following teacher-defined scoring rule:
+- Task Achievement/Response weight: {task_response_weight}
+- Coherence & Cohesion weight: {coherence_weight}
+- Lexical Resource weight: {lexical_weight}
+- Grammatical Range & Accuracy weight: {grammar_weight}
+- Strictness multiplier: {strictness}
+
+Rubric: {rubric_id}
+
+Prompt/Question:
+{prompt_content}
+
+Evaluate the student's writing submission below:
+
+SUBMISSION:
+{submission_text}
+
+IMPORTANT:
+- Your scoring MUST follow IELTS criteria (bands 0-9).
+- You MUST return JSON only.
+- Do NOT include explanations outside JSON.
+- Apply strictness logic as defined.
+- Ensure all band scores are between 0 and 9.
+
+Return JSON with this exact structure:
+
+{
+  "overallBand": number,
+  "task_achievement": number,
+  "coherence_cohesion": number,
+  "lexical": number,
+  "grammatical": number,
+  "feedback": {
+    "strengths": string,
+    "issues": string,
+    "actions": string
+  }
+}`);
+
+    const parser = new JsonOutputParser<any>();
+    const chain = promptTemplate.pipe(this.model).pipe(parser);
+    const weights = aiRule.weights as any;
+
+    const result = await chain.invoke({
+        task_response_weight: weights.taskResponse || 0.25,
+        coherence_weight: weights.coherence || 0.25,
+        lexical_weight: weights.lexical || 0.25,
+        grammar_weight: weights.grammar || 0.25,
+        strictness: aiRule.strictness,
+        rubric_id: aiRule.rubricId,
+        submission_text: submissionText,
+        prompt_content: promptContent || "No specific prompt provided.",
+    });
+
+    // Basic validation
+    if (!result.overallBand || !result.feedback) {
+         throw new BadRequestException("AI returned incomplete scoring data.");
+    }
+
+    return result;
+  }
+
+  /**
    * Validate that the score response has the required structure and valid values
    */
   private validateScoreResponse(response: any): void {
-    const requiredFields = ["overallBand", "fluency", "coherence", "lexical", "grammar", "pronunciation", "feedback"];
+    const requiredFields = ["overallBand", "fluency", "lexical", "grammar", "pronunciation", "feedback"];
 
     for (const field of requiredFields) {
       if (!(field in response)) {
@@ -126,7 +203,7 @@ Return JSON with this exact structure:
     }
 
     // Validate band scores are between 0-9
-    const bandFields = ["overallBand", "fluency", "coherence", "lexical", "grammar", "pronunciation"];
+    const bandFields = ["overallBand", "fluency", "lexical", "grammar", "pronunciation"];
     for (const field of bandFields) {
       const value = response[field];
       if (typeof value !== "number" || value < 0 || value > 9) {

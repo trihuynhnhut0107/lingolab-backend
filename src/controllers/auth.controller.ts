@@ -113,8 +113,16 @@ export class AuthController extends Controller {
   @Security("bearer")
   @Authenticated()
   async changePassword(
-    @Body() dto: ChangePasswordDTO
+    @Body() dto: ChangePasswordDTO,
+    @Request() request: any
   ): Promise<{ message: string }> {
+    const authRequest = request as AuthRequest;
+    if (!authRequest.user || !authRequest.user.id) {
+        throw new Error("Unauthorized: No user in request");
+    }
+    
+    await authService.changePassword(authRequest.user.id, dto.currentPassword, dto.newPassword);
+    
     return { message: "Password changed successfully" };
   }
 
@@ -127,13 +135,14 @@ export class AuthController extends Controller {
   @Response(401, "Unauthorized")
   @Security("bearer")
   @Authenticated()
-  async getCurrentUser(@Request() request: AuthRequest): Promise<AuthUserDTO> {
-    if (!request.user) {
+  async getCurrentUser(@Request() request: any): Promise<AuthUserDTO> {
+    const authRequest = request as AuthRequest;
+    if (!authRequest.user) {
       throw new Error("Unauthorized: No user in request");
     }
 
     // Fetch full user details from database
-    const user = await authService.getUserFromToken(request.user);
+    const user = await authService.getUserFromToken(authRequest.user);
     if (!user) {
       throw new Error("User not found");
     }

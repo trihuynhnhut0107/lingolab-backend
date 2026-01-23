@@ -21,6 +21,7 @@ import {
   AttemptListDTO,
   AttemptDetailDTO,
   AttemptFilterDTO,
+  GradeAttemptDTO,
 } from "../dtos/attempt.dto";
 import { AttemptService } from "../services/attempt.service";
 import { SkillType, AttemptStatus } from "../enums";
@@ -203,7 +204,7 @@ export class AttemptController extends Controller {
   @TeacherOnly()
   async gradeAttempt(
     @Path() id: string,
-    @Body() dto: { score: number; feedback: string } // Using inline interface or import GradeAttemptDTO if exported
+    @Body() dto: GradeAttemptDTO
   ): Promise<AttemptResponseDTO> {
     return await this.attemptService.gradeAttempt(id, dto);
   }

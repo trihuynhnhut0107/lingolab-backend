@@ -9,6 +9,7 @@ import {
   AttemptReviewDTO,
   AttemptDetailDTO,
   AttemptFilterDTO,
+  GradeAttemptDTO,
 } from "../dtos/attempt.dto";
 import { Attempt } from "../entities/Attempt";
 import { AttemptStatus, SkillType } from "../enums";
@@ -438,7 +439,7 @@ export class AttemptService {
   }
 
   // Grade attempt (Teacher)
-  async gradeAttempt(id: string, dto: { score: number; feedback: string }): Promise<AttemptResponseDTO> {
+  async gradeAttempt(id: string, dto: GradeAttemptDTO): Promise<AttemptResponseDTO> {
     const attempt = await this.attemptRepository.findOne({
       where: { id },
       relations: ["assignment"],
@@ -452,6 +453,13 @@ export class AttemptService {
     let scoreEntity = await this.scoreRepository.findOne({ where: { attemptId: id } });
     
     if (scoreEntity) {
+        if (dto.fluency !== undefined) scoreEntity.fluency = dto.fluency;
+        if (dto.pronunciation !== undefined) scoreEntity.pronunciation = dto.pronunciation;
+        if (dto.lexical !== undefined) scoreEntity.lexical = dto.lexical;
+        if (dto.grammar !== undefined) scoreEntity.grammar = dto.grammar;
+        if (dto.coherence !== undefined) scoreEntity.coherence = dto.coherence;
+        if (dto.taskResponse !== undefined) scoreEntity.taskResponse = dto.taskResponse;
+        
         scoreEntity.overallBand = dto.score;
         scoreEntity.feedback = dto.feedback;
         scoreEntity.detailedFeedback = {
@@ -463,12 +471,12 @@ export class AttemptService {
             attemptId: id,
             overallBand: dto.score,
             feedback: dto.feedback,
-            fluency: dto.score,       // Defaulting sub-scores to overall
-            pronunciation: dto.score,
-            lexical: dto.score,
-            grammar: dto.score,
-            coherence: dto.score,
-            taskResponse: dto.score, // Added taskResponse default
+            fluency: dto.fluency ?? dto.score,
+            pronunciation: dto.pronunciation ?? dto.score,
+            lexical: dto.lexical ?? dto.score,
+            grammar: dto.grammar ?? dto.score,
+            coherence: dto.coherence ?? dto.score,
+            taskResponse: dto.taskResponse ?? dto.score,
             detailedFeedback: { 
                 note: "Manually graded by teacher",
                 gradedByTeacher: true 

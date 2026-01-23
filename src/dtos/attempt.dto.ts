@@ -81,6 +81,13 @@ export class GradeAttemptDTO {
    * Teacher's feedback comments
    */
   feedback!: string;
+
+  fluency?: number;
+  pronunciation?: number;
+  lexical?: number;
+  grammar?: number;
+  coherence?: number;
+  taskResponse?: number;
 }
 
 /**

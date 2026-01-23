@@ -115,16 +115,28 @@ export class GeminiService {
 
       // 3. Prompt
       const prompt = `
-        You are an expert IELTS Speaking examiner. Initialize strict grading.
-        Listen to the student's response carefully.
-        ${promptText ? `\nTask/Topic: "${promptText}"\n` : ""}
-        Task:
-        1. Transcribe the audio verbatim.
-        2. Evaluate the speaking performance based on official IELTS Speaking criteria (Fluency & Coherence, Lexical Resource, Grammatical Range & Accuracy, Pronunciation).
-        3. Provide detailed feedback.
-        
-        Output must be strictly JSON matching the schema provided.
-        Score from 0.0 to 9.0 (0.5 increments allowed).
+       You are an expert IELTS Speaking examiner. Initialize strict grading.
+Listen to the student's response carefully.
+
+${promptText ? `Task/Topic: "${promptText}"` : ""}
+
+Task:
+1. Transcribe the audio verbatim into a field called "transcript".
+2. Evaluate the speaking performance based on official IELTS Speaking criteria:
+   - Fluency & Coherence
+   - Lexical Resource
+   - Grammatical Range & Accuracy
+   - Pronunciation
+3. Provide discrete scores for EACH criterion (0.0 - 9.0 in 0.5 increments).
+4. Calculate overallBand as the exact average of the four scores, rounded to the nearest 0.5.
+5. Provide detailed feedback, including:
+   - Strengths
+   - Weaknesses
+   - Specific improvement suggestions
+6. If the response is too short, unclear, or off-topic, penalize accordingly.
+
+Output must be strictly JSON matching the schema provided.
+ENSURE "fluency", "coherence", "lexical", "grammar", and "pronunciation" are all present and non-null.
       `;
 
       // 4. Generate Content

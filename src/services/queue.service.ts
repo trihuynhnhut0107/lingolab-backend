@@ -105,8 +105,13 @@ class QueueService {
         );
 
         // Map speaking scores
-        if (scoreResponse.fluency !== undefined)
+        if (scoreResponse.fluency !== undefined) {
           scoreMetadata.fluency = scoreResponse.fluency;
+          // Fallback: Map fluency score to coherence column to satisfy DB constraint if coherence is missing/merged
+          if (scoreResponse.coherence === undefined) {
+              scoreMetadata.coherence_cohesion = scoreResponse.fluency;
+          }
+        }
         if (scoreResponse.coherence !== undefined)
           scoreMetadata.coherence_cohesion = scoreResponse.coherence;
         if (scoreResponse.lexical !== undefined)
@@ -137,12 +142,27 @@ class QueueService {
 
       await job.updateProgress(80);
 
+      // Check if a score already exists for this attempt (e.g. from a failed previous job that partially succeeded)
+      // and delete it to avoid unique constraint violations
+      const existingScore = await scoreRepository.findOne({ where: { attemptId } });
+      if (existingScore) {
+          console.log(`[Worker] Removing existing score for attempt ${attemptId} before saving new score`);
+          await scoreRepository.remove(existingScore);
+      }
+
       const score = scoreRepository.create({
         attemptId,
-        scoreMetadata,
+        // scoreMetadata property removed as it's not in the entity
         overallBand: scoreResponse.overallBand,
         feedback: JSON.stringify(scoreResponse.feedback),
         detailedFeedback: scoreResponse.feedback,
+        // Map specific criteria scores
+        fluency: scoreMetadata.fluency,
+        pronunciation: scoreMetadata.pronunciation,
+        lexical: scoreMetadata.lexical,
+        grammar: scoreMetadata.grammar || scoreMetadata.grammatical,
+        coherence: scoreMetadata.coherence_cohesion,
+        taskResponse: scoreMetadata.task_achievement,
       });
 
       const savedScore = await scoreRepository.save(score);
