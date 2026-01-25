@@ -36,7 +36,6 @@ export class ClassController extends Controller {
 
   /**
    * Create a new class
-   * Requires: Teacher or Admin role
    */
   @Post()
   @Response(201, "Class created successfully")
@@ -78,7 +77,7 @@ export class ClassController extends Controller {
    */
   @Get("teacher/{teacherId}")
   @Security("bearer")
-  @Authenticated() // Or @TeacherOnly() if you want to restrict viewing other's classes, but Authenticated is safer for now if admins view it.
+  @Authenticated() 
   async getClassesByTeacher(
     @Path() teacherId: string,
     @Query() limit: number = 10,
@@ -124,7 +123,6 @@ export class ClassController extends Controller {
 
   /**
    * Update class
-   * Requires: Teacher or Admin role
    */
   @Put("{id}")
   @Response(200, "Class updated successfully")
@@ -142,7 +140,6 @@ export class ClassController extends Controller {
 
   /**
    * Enroll learner by ID
-   * Requires: Teacher or Admin role (teacher manually adds a learner)
    */
   @Post("{id}/enroll")
   @Response(200, "Learner enrolled successfully")
@@ -160,7 +157,6 @@ export class ClassController extends Controller {
 
   /**
    * Enroll learner by code
-   * Requires: Authenticated user (learner self-enrolls using class code)
    */
   @Post("enroll-by-code/{learnerId}")
   @Response(200, "Learner enrolled successfully")
@@ -177,7 +173,6 @@ export class ClassController extends Controller {
 
   /**
    * Remove learner from class
-   * Requires: Teacher or Admin role
    */
   @Post("{id}/remove-learner")
   @Response(200, "Learner removed successfully")
@@ -215,7 +210,6 @@ export class ClassController extends Controller {
 
   /**
    * Delete class
-   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "Class deleted successfully")

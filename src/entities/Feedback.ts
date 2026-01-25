@@ -66,7 +66,9 @@ export class Feedback {
   @JoinColumn({ name: "attempt_id" })
   attempt!: Attempt;
 
-  @ManyToOne(() => User, (user) => user.feedbacks)
+  @ManyToOne(() => User, (user) => user.feedbacks, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "author_id" })
   author!: User;
 }

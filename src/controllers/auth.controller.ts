@@ -24,25 +24,12 @@ import { AuthRequest } from "../middleware/auth.middleware";
 
 /**
  * Authentication Controller
- * Handles user registration, login, token refresh, and profile management
- *
- * Routes:
- * - POST /api/auth/register
- * - POST /api/auth/login
- * - POST /api/auth/refresh
- * - GET /api/auth/verify
- * - POST /api/auth/change-password
- * - GET /api/auth/me
  */
 @Route("/auth")
 @Tags("Auth")
 export class AuthController extends Controller {
   /**
    * Register a new user
-   *
-   * Requirements:
-   * - Email must be unique
-   * - Passwords must match
    */
   @Post("register")
   @Response<AuthResponseDTO>(201, "User registered successfully")
@@ -53,12 +40,7 @@ export class AuthController extends Controller {
   }
 
   /**
-   * Login with email and password
-   *
-   * Returns:
-   * - accessToken: Short-lived JWT token (15 minutes by default)
-   * - refreshToken: Long-lived JWT token (7 days by default)
-   * - user: User information
+   * Login 
    */
   @Post("login")
   @Response<AuthResponseDTO>(200, "Login successful")
@@ -69,10 +51,7 @@ export class AuthController extends Controller {
   }
 
   /**
-   * Refresh access token using refresh token
-   *
-   * When access token expires, use refresh token to get new tokens
-   * Client should store refresh token securely (httpOnly cookie preferred)
+   * Refresh access token 
    */
   @Post("refresh")
   @Response<AuthResponseDTO>(200, "Token refreshed successfully")
@@ -83,9 +62,6 @@ export class AuthController extends Controller {
 
   /**
    * Verify current access token
-   *
-   * Usage: Call this to check if stored token is still valid
-   * Requires: Valid access token in Authorization header
    */
   @Get("verify")
   @Response(200, "Token is valid")
@@ -100,11 +76,6 @@ export class AuthController extends Controller {
 
   /**
    * Change user password
-   *
-   * Requires:
-   * - Current password
-   * - New password with strength requirements
-   * - Confirmation password matching new password
    */
   @Post("change-password")
   @Response(200, "Password changed successfully")
@@ -128,7 +99,6 @@ export class AuthController extends Controller {
 
   /**
    * Get current user profile
-   * Requires: Valid access token
    */
   @Get("me")
   @Response<AuthUserDTO>(200, "User profile retrieved")

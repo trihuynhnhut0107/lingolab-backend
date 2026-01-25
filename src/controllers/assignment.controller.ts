@@ -197,7 +197,6 @@ export class AssignmentController extends Controller {
 
   /**
    * Update assignment details
-   * Requires: Teacher or Admin role
    */
   @Put("{id}")
   @Response(200, "Assignment updated successfully")
@@ -215,7 +214,6 @@ export class AssignmentController extends Controller {
 
   /**
    * Update assignment status
-   * Requires: Teacher or Admin role
    */
   @Put("{id}/status/{status}")
   @Response(200, "Assignment status updated")
@@ -236,7 +234,6 @@ export class AssignmentController extends Controller {
 
   /**
    * Delete assignment
-   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "Assignment deleted successfully")
@@ -251,14 +248,11 @@ export class AssignmentController extends Controller {
   }
 
   /**
-   * ADMIN/DEBUG: Recalculate stats for all assignments
-   * Helpful if stats get out of sync
+    Recalculate stats for all assignments
    */
   @Post("admin/recalculate-all")
   @Response(200, "Recalculation started")
   async recalculateAllStats(): Promise<{ message: string }> {
-     // This could be heavy, so maybe don't await everything if many assignments
-     // But for now, simple await is fine for this user scale
      const assignments = await assignmentService.getAllAssignments(1000, 0); // Fetch up to 1000
      let count = 0;
      for (const a of assignments.data) {

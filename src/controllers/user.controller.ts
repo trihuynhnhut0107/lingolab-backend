@@ -124,30 +124,28 @@ export class UserController extends Controller {
 
   /**
    * Lock user account
-   * Requires: Admin role only
+   * Requires: Authenticated user (Teacher or Admin)
    */
   @Put("{id}/lock")
   @Response<UserResponseDTO>(200, "User locked successfully")
   @Response(404, "User not found")
   @Response(401, "Unauthorized - must be logged in")
-  @Response(403, "Forbidden - only admins can lock user accounts")
   @Security("bearer")
-  @AdminOnly()
+  @Authenticated()
   async lockUserAccount(@Path() id: string): Promise<UserResponseDTO> {
     return await this.userService.lockUserAccount(id);
   }
 
   /**
    * Unlock user account
-   * Requires: Admin role only
+   * Requires: Authenticated user (Teacher or Admin)
    */
   @Put("{id}/unlock")
   @Response<UserResponseDTO>(200, "User unlocked successfully")
   @Response(404, "User not found")
   @Response(401, "Unauthorized - must be logged in")
-  @Response(403, "Forbidden - only admins can unlock user accounts")
   @Security("bearer")
-  @AdminOnly()
+  @Authenticated()
   async unlockUserAccount(@Path() id: string): Promise<UserResponseDTO> {
     return await this.userService.unlockUserAccount(id);
   }
@@ -165,15 +163,14 @@ export class UserController extends Controller {
 
   /**
    * Delete user
-   * Requires: Admin role only
+   * Requires: Authenticated user (Teacher or Admin)
    */
   @Delete("{id}")
   @Response(204, "User deleted successfully")
   @Response(404, "User not found")
   @Response(401, "Unauthorized - must be logged in")
-  @Response(403, "Forbidden - only admins can delete user accounts")
   @Security("bearer")
-  @AdminOnly()
+  @Authenticated()
   async deleteUser(@Path() id: string): Promise<void> {
     await this.userService.deleteUser(id);
     this.setStatus(204);

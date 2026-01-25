@@ -1,30 +1,5 @@
 import { Response } from "tsoa";
 
-/**
- * Auth decorator for tsoa controllers
- *
- * These decorators document authentication requirements in Swagger
- * They don't enforce auth (that's done by middleware)
- * But they make it clear which endpoints require authentication
- *
- * Usage in controllers:
- *
- * Basic auth required:
- *   @Get()
- *   @Auth()
- *   async getProfile(@Security("bearer") _auth: any)
- *
- * Role-based:
- *   @Post()
- *   @Auth(["teacher"])
- *   @Response(403, "Insufficient permissions")
- *   async createClass(@Security("bearer") _auth: any)
- *
- * Optional auth:
- *   @Get()
- *   @Auth({ optional: true })
- *   async getPublicData(@Security("bearer", ["optional"]) _auth?: any)
- */
 
 export interface AuthOptions {
   roles?: string[];
@@ -32,20 +7,6 @@ export interface AuthOptions {
   description?: string;
 }
 
-/**
- * Auth decorator (for documentation and future middleware enforcement)
- * Add this to controller methods that require authentication
- *
- * @param options - Authentication requirements
- *
- * @example
- * @Get("{id}")
- * @Auth({ roles: ["teacher", "admin"] })
- * @Response(403, "Insufficient permissions")
- * async getStudentScore(@Path() id: string, @Security("bearer") _auth: any) {
- *   // Implementation
- * }
- */
 export function Auth(options?: string[] | AuthOptions) {
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     // Store auth metadata on the method

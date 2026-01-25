@@ -156,7 +156,68 @@ export class UserService {
     return this.mapToResponseDTO(updated);
   }
 
-  // ... (lock, unlock, delete, search remain same)
+  // Lock user account
+  async lockUserAccount(id: string): Promise<UserResponseDTO> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID '${id}' not found`);
+    }
+
+    if (user.status === UserStatus.LOCKED) {
+      throw new ConflictException(`User with ID '${id}' is already locked`);
+    }
+
+    user.status = UserStatus.LOCKED;
+    await this.userRepository.save(user);
+
+    return this.mapToResponseDTO(user);
+  }
+
+  // Unlock user account
+  async unlockUserAccount(id: string): Promise<UserResponseDTO> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID '${id}' not found`);
+    }
+
+    if (user.status === UserStatus.ACTIVE) {
+      throw new ConflictException(`User with ID '${id}' is already active`);
+    }
+
+    user.status = UserStatus.ACTIVE;
+    await this.userRepository.save(user);
+
+    return this.mapToResponseDTO(user);
+  }
+
+  // Delete user
+  async deleteUser(id: string): Promise<void> {
+    const user = await this.userRepository.findOne({ 
+        where: { id },
+        relations: ["enrolledClasses"] 
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID '${id}' not found`);
+    }
+
+    // Capture class IDs before deletion
+    const enrolledClassIds = user.enrolledClasses?.map(c => c.id) || [];
+
+    await this.userRepository.remove(user);
+
+    // Update stats for all assignments in enrolled classes
+    if (enrolledClassIds.length > 0) {
+        try {
+            const { assignmentService } = await import("./assignment.service");
+            for (const classId of enrolledClassIds) {
+                await assignmentService.updateClassAssignmentsStats(classId);
+            }
+        } catch (error) {
+            console.error(`Failed to update assignment stats after user deletion:`, error);
+        }
+    }
+  }
 
   // Mappers
   private mapToResponseDTO(user: User): UserResponseDTO {

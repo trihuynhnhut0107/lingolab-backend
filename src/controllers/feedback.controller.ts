@@ -34,7 +34,6 @@ export class FeedbackController extends Controller {
 
   /**
    * Create feedback
-   * Requires: Teacher or Admin role
    */
   @Post()
   @Response(201, "Feedback created successfully")
@@ -203,7 +202,6 @@ export class FeedbackController extends Controller {
 
   /**
    * Delete feedback
-   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "Feedback deleted successfully")
@@ -219,7 +217,6 @@ export class FeedbackController extends Controller {
 
   /**
    * Delete all feedback for an attempt
-   * Requires: Teacher or Admin role
    */
   @Delete("attempt/{attemptId}/all")
   @Response(204, "All feedback deleted successfully")

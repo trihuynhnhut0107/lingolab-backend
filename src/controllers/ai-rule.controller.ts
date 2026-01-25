@@ -24,55 +24,9 @@ import {
 import { PaginatedResponseDTO } from "../dtos/pagination.dto";
 import { TeacherOnly } from "../decorators/auth.decorator";
 import { AuthRequest } from "../middleware/auth.middleware";
-
-/**
- * AI Rule Controller
- * Manages AI scoring rules configured by teachers
- *
- * Teachers can create custom AI scoring rules with:
- * - Model selection (qwen2-7b-finetuned, gpt-4, claude-3, etc.)
- * - Rubric selection (ielts_speaking, ielts_writing, etc.)
- * - Custom scoring weights (fluency, coherence, lexical, grammar, pronunciation)
- * - Strictness multiplier (1.0 = standard, >1.0 = stricter, <1.0 = looser)
- * - Extra model configuration (temperature, top_p, etc.)
- *
- * Routes:
- * - POST /api/ai-rules - Create AI rule
- * - GET /api/ai-rules - List all AI rules
- * - GET /api/ai-rules/{id} - Get rule details
- * - PUT /api/ai-rules/{id} - Update rule
- * - DELETE /api/ai-rules/{id} - Delete rule
- * - GET /api/ai-rules/teacher/{teacherId} - Get teacher's rules
- * - GET /api/ai-rules/teacher/{teacherId}/active - Get active rules
- * - POST /api/ai-rules/filter - Filter rules
- * - PUT /api/ai-rules/{id}/toggle - Toggle active status
- */
 @Route("/ai-rules")
 @Tags("AIRule")
 export class AIRuleController extends Controller {
-  /**
-   * Create a new AI scoring rule
-   * Requires: Teacher or Admin role
-   * Teacher ID is automatically extracted from the authentication token
-   *
-   * Example:
-   * {
-   *   "name": "Strict IELTS Speaking",
-   *   "modelId": "qwen2-7b-finetuned",
-   *   "rubricId": "ielts_speaking",
-   *   "weights": {
-   *     "fluency": 0.25,
-   *     "coherence": 0.25,
-   *     "lexical": 0.25,
-   *     "grammar": 0.25
-   *   },
-   *   "strictness": 1.2,
-   *   "extraConfig": {
-   *     "temperature": 0.1,
-   *     "top_p": 0.9
-   *   }
-   * }
-   */
   @Post()
   @Response(201, "AI Rule created successfully")
   @Response(400, "Invalid rule data or weights don't sum to 1.0")
@@ -145,7 +99,6 @@ export class AIRuleController extends Controller {
 
   /**
    * Update AI rule
-   * Requires: Teacher or Admin role
    */
   @Put("{id}")
   @Response(200, "AI Rule updated successfully")
@@ -164,7 +117,6 @@ export class AIRuleController extends Controller {
 
   /**
    * Toggle AI rule active status (enable/disable)
-   * Requires: Teacher or Admin role
    */
   @Put("{id}/toggle")
   @Response(200, "AI Rule status toggled")
@@ -179,7 +131,6 @@ export class AIRuleController extends Controller {
 
   /**
    * Delete AI rule
-   * Requires: Teacher or Admin role
    */
   @Delete("{id}")
   @Response(204, "AI Rule deleted successfully")

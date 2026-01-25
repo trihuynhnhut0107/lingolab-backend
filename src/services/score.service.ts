@@ -270,9 +270,9 @@ export class ScoreService {
 
   // Private helper
   private validateScores(
-    fluency: number,
+    fluency: number | null,
     coherence: number,
-    pronunciation: number,
+    pronunciation: number | null,
     lexical: number,
     grammar: number
   ): void {
@@ -284,6 +284,9 @@ export class ScoreService {
       { name: "grammar", value: grammar },
     ];
     for (const score of scores) {
+      // Skip validation for null values (valid for Writing tasks)
+      if (score.value === null) continue;
+      
       if (score.value < 0 || score.value > 9) {
         throw new BadRequestException(
           `Invalid ${score.name} score ${score.value}. Score must be between 0 and 9`

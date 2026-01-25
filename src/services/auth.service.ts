@@ -183,8 +183,6 @@ export class AuthService {
 
   /**
    * Logout (invalidate token on server side - optional, for token blacklist)
-   * For now, JWT tokens are stateless and logout happens on client
-   * If implementing token blacklist, add logic here
    */
   async logout(userId: string, token: string): Promise<void> {
     // TODO: Implement token blacklist if needed

@@ -36,7 +36,6 @@ export class AttemptController extends Controller {
 
   /**
    * Create a new attempt
-   * Requires: Authenticated user (learner creating an attempt)
    */
   @Post()
   @Response(201, "Attempt created successfully")
@@ -161,7 +160,6 @@ export class AttemptController extends Controller {
 
   /**
    * Submit an attempt
-   * Requires: Authenticated user (learner submitting their attempt)
    */
   @Put("{id}/submit")
   @Response(200, "Attempt submitted successfully")
@@ -178,7 +176,6 @@ export class AttemptController extends Controller {
 
   /**
    * Update attempt
-   * Requires: Authenticated user (learner updating their attempt)
    */
   @Put("{id}")
   @Response(200, "Attempt updated successfully")
@@ -246,7 +243,6 @@ export class AttemptController extends Controller {
 
   /**
    * Delete attempt
-   * Requires: Authenticated user (learner or teacher)
    */
   @Delete("{id}")
   @Response(204, "Attempt deleted successfully")

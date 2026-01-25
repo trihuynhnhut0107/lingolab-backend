@@ -113,13 +113,7 @@ export class CreateAIRuleDTO {
   extraConfig?: Record<string, any>;
 }
 
-/**
- * Update AI Rule DTO
- * @example {
- *   "strictness": 1.2,
- *   "isActive": false
- * }
- */
+
 export class UpdateAIRuleDTO {
   name?: string;
   description?: string;
@@ -131,26 +125,6 @@ export class UpdateAIRuleDTO {
   isActive?: boolean;
 }
 
-/**
- * AI Rule Response DTO
- * @example {
- *   "id": "ai-rule-uuid-123",
- *   "teacherId": "teacher-uuid-123",
- *   "name": "Standard IELTS Speaking Rule",
- *   "modelId": "gpt-4",
- *   "rubricId": "ielts_speaking",
- *   "weights": {
- *     "fluency": 0.25,
- *     "coherence": 0.25,
- *     "lexical": 0.25,
- *     "grammar": 0.25
- *   },
- *   "strictness": 1.0,
- *   "isActive": true,
- *   "createdAt": "2024-12-06T10:00:00Z",
- *   "updatedAt": "2024-12-06T10:00:00Z"
- * }
- */
 export class AIRuleResponseDTO {
   id!: string;
   teacherId!: string;
@@ -166,18 +140,6 @@ export class AIRuleResponseDTO {
   updatedAt!: Date;
 }
 
-/**
- * AI Rule List DTO
- * @example {
- *   "id": "ai-rule-uuid-123",
- *   "name": "Standard IELTS Speaking Rule",
- *   "modelId": "gpt-4",
- *   "rubricId": "ielts_speaking",
- *   "strictness": 1.0,
- *   "isActive": true,
- *   "createdAt": "2024-12-06T10:00:00Z"
- * }
- */
 export class AIRuleListDTO {
   id!: string;
   name!: string;
@@ -188,15 +150,7 @@ export class AIRuleListDTO {
   createdAt!: Date;
 }
 
-/**
- * AI Rule Filter DTO
- * @example {
- *   "teacherId": "teacher-uuid-123",
- *   "isActive": true,
- *   "limit": 10,
- *   "offset": 0
- * }
- */
+
 export class AIRuleFilterDTO {
   teacherId?: string;
   isActive?: boolean;

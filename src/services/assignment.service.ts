@@ -81,8 +81,6 @@ export class AssignmentService {
 
                 if (candidates.length > 0) {
                      // Rank candidates to find the "best" one
-                     // Priority: SCORED > SUBMITTED > IN_PROGRESS
-                     // If equal status: Most recent updatedAt
                      const statusWeight = {
                          [AttemptStatus.SCORED]: 3,
                          [AttemptStatus.SUBMITTED]: 2,
@@ -233,7 +231,6 @@ export class AssignmentService {
         });
         
         // Map attempts to assignments
-        // Pool all candidates (linked or compatible unlinked) and pick the best one
         const statusWeight = {
              [AttemptStatus.SCORED]: 3,
              [AttemptStatus.SUBMITTED]: 2,
@@ -267,8 +264,7 @@ export class AssignmentService {
                  console.log(`[DEBUG] Selected Best Attempt for ${assignment.title}: ${bestAttempt.id} (Status: ${bestAttempt.status})`);
                  attemptMap.set(assignment.id, bestAttempt);
                  
-                 // Self-healing (lite): distinct from getAssignmentById, we might not want to write to DB during a list reading operation for perf, 
-                 // but we can at least show the right status.
+              
              }
         }
     }
@@ -395,16 +391,24 @@ export class AssignmentService {
       throw new HttpException("Assignment not found", 404);
     }
 
-    // Get all attempts for this assignment
+    // Get all attempts for this assignment (via prompt or assignment link)
     const attempts = await this.attemptRepository.find({
-      where: { promptId: assignment.promptId },
-      relations: ["learner", "score"],
+      where: [
+          { assignment: { id: assignmentId } },
+          { prompt: { id: assignment.promptId } }
+      ],
+      relations: ["learner", "score", "assignment"],
     });
 
-    return attempts.map((attempt) => ({
+    
+    const validAttempts = attempts.filter(a => !!a.learner);
+
+    return validAttempts.map((attempt) => ({
       learnerId: attempt.learnerId,
       learnerEmail: attempt.learner?.email || "",
-      learnerName: attempt.learner?.email?.split("@")[0],
+      learnerName: (attempt.learner?.firstName && attempt.learner?.lastName) 
+        ? `${attempt.learner.firstName} ${attempt.learner.lastName}` 
+        : (attempt.learner?.firstName || attempt.learner?.lastName || attempt.learner?.email?.split("@")[0]),
       status: attempt.status,
       submittedAt: attempt.submittedAt,
       score: attempt.score?.overallBand,
@@ -494,6 +498,7 @@ export class AssignmentService {
       type: assignment.prompt?.skillType,
     };
   }
+
   async updateAssignmentStats(assignmentId: string): Promise<void> {
     const assignment = await this.assignmentRepository.findOne({
       where: { id: assignmentId },
@@ -502,28 +507,46 @@ export class AssignmentService {
 
     if (!assignment) return;
 
-    // Update totalEnrolled
-    const totalEnrolled = assignment.class?.learners?.length || 0;
+    // Update totalEnrolled based on CURRENT class roster (excludes deleted users)
+    const enrolledLearners = assignment.class?.learners || [];
+    const enrolledLearnerIds = new Set(enrolledLearners.map(l => l.id));
+    const totalEnrolled = enrolledLearners.length;
 
     // Count submitted and scored attempts
+    // Fetch attempts linked to Assignment OR Prompt
     const attempts = await this.attemptRepository.find({
-      where: {
-        assignment: { id: assignmentId },
-      },
-      relations: ["score"], // Needed for average score calc
+      where: [
+          { assignment: { id: assignmentId } },
+          { prompt: { id: assignment.promptId } }
+      ],
+      relations: ["score", "learner", "assignment"], 
     });
 
-    const totalSubmitted = attempts.filter(
+    // Cleanup logic: 
+    // 1. Remove truly orphaned attempts (no learner) if linked to assignment
+    const orphans = attempts.filter(a => !a.learner && a.assignment?.id === assignmentId);
+    if (orphans.length > 0) {
+        await this.attemptRepository.remove(orphans);
+    }
+
+    // Filter valid attempts provided by ENROLLED learners or explicitly linked attempts with valid learners
+    const validAttempts = attempts.filter(a => {
+        if (!a.learner) return false;
+        // Check if learner is enrolled
+        return enrolledLearnerIds.has(a.learner.id);
+    });
+
+    const totalSubmitted = validAttempts.filter(
       (a) =>
         a.status === AttemptStatus.SUBMITTED || a.status === AttemptStatus.SCORED
     ).length;
     
-    const totalScored = attempts.filter(
+    const totalScored = validAttempts.filter(
       (a) => a.status === AttemptStatus.SCORED
     ).length;
 
     // Calculate Average Score
-    const scoredAttempts = attempts.filter(a => a.status === AttemptStatus.SCORED && a.score?.overallBand);
+    const scoredAttempts = validAttempts.filter(a => a.status === AttemptStatus.SCORED && a.score?.overallBand);
     const totalScoreVal = scoredAttempts.reduce((sum, a) => sum + Number(a.score!.overallBand), 0);
     const averageScore = scoredAttempts.length > 0 ? totalScoreVal / scoredAttempts.length : 0;
 
@@ -533,6 +556,17 @@ export class AssignmentService {
       totalScored,
       averageScore
     });
+  }
+
+  async updateClassAssignmentsStats(classId: string): Promise<void> {
+    const assignments = await this.assignmentRepository.find({
+      where: { classId },
+      select: ["id"]
+    });
+
+    for (const assignment of assignments) {
+        await this.updateAssignmentStats(assignment.id);
+    }
   }
 }
 

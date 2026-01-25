@@ -46,35 +46,7 @@ export interface ApiResponse<T = any> {
   timestamp: string;
 }
 
-/**
- * Base controller class providing unified response format
- * All controllers should extend this class
- *
- * Usage:
- * return this.getResponse(data, true, "Success message", 200);
- * return this.getResponse(null, false, "", 404, "Not found");
- */
 export abstract class BaseController extends Controller {
-  /**
-   * Unified response builder
-   * @template T The type of response data
-   * @param data The response data (can include pagination metadata)
-   * @param isSuccess Whether the request was successful
-   * @param message Optional success or status message
-   * @param statusCode HTTP status code
-   * @param error Optional error message (used when isSuccess is false)
-   * @returns Formatted API response
-   *
-   * @example
-   * // Success response
-   * return this.getResponse(user, true, "User created", 201);
-   *
-   * // Paginated response
-   * return this.getResponse(paginatedData, true, "Users retrieved", 200);
-   *
-   * // Error response
-   * return this.getResponse(null, false, "", 404, "User not found");
-   */
   protected getResponse<T = any>(
     data: T | null = null,
     isSuccess: boolean = true,
@@ -150,29 +122,6 @@ export abstract class BaseController extends Controller {
     this.setStatus(204);
   }
 
-  /**
-   * Wraps an async handler with automatic error catching and response formatting
-   * Errors are automatically caught and converted to error responses
-   *
-   * @template T The return type of the handler
-   * @param handler Async function that returns response data
-   * @param successMessage Message to include in success response
-   * @param successStatusCode HTTP status code for success (default: 200)
-   * @returns Formatted response or error response
-   *
-   * @example
-   * return this.handleAsync(
-   *   () => this.userService.getUserById(id),
-   *   "User retrieved successfully"
-   * );
-   *
-   * @example
-   * return this.handleAsync(
-   *   () => this.userService.createUser(dto),
-   *   "User created successfully",
-   *   201
-   * );
-   */
   protected async handleAsync<T = any>(
     handler: () => Promise<T>,
     successMessage: string = "Success",
@@ -188,14 +137,6 @@ export abstract class BaseController extends Controller {
     }
   }
 
-  /**
-   * Extracts HTTP status code from error
-   * Looks for HttpException statusCode, then custom statusCode property,
-   * then tries to infer from error message
-   *
-   * @param error The error object
-   * @returns HTTP status code
-   */
   private extractStatusCode(error: any): number {
     // Check if error is an HttpException (from services)
     if (isHttpException(error)) {
@@ -219,22 +160,6 @@ export abstract class BaseController extends Controller {
     return 500;
   }
 
-  /**
-   * Safely executes a service call with automatic error handling
-   * Errors are caught and automatically formatted as error responses
-   *
-   * @template T The return type
-   * @param serviceCall The service method to execute
-   * @param successMessage Message for success response
-   * @param statusCode HTTP status code for success (default: 200)
-   * @returns Formatted response or error response
-   *
-   * @example
-   * return this.executeService(
-   *   () => this.userService.getUserById(id),
-   *   "User retrieved successfully"
-   * );
-   */
   protected async executeService<T = any>(
     serviceCall: () => Promise<T>,
     successMessage: string = "Success",
